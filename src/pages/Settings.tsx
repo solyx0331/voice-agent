@@ -139,29 +139,46 @@ const Settings = () => {
           </div>
 
           <div className="flex flex-col lg:flex-row gap-4 sm:gap-5 md:gap-6">
-            {/* Tabs Sidebar */}
-            <div className="w-full lg:w-64 space-y-1">
-              <div className="flex flex-row lg:flex-col gap-2 overflow-x-auto pb-2 lg:pb-0">
+            {/* Mobile: Select Dropdown */}
+            <div className="lg:hidden">
+              <select
+                value={activeTab}
+                onChange={(e) => setActiveTab(e.target.value)}
+                className="w-full px-3 sm:px-4 py-2.5 sm:py-2 bg-white border border-border rounded-lg text-sm sm:text-base text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+              >
                 {tabs.map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={cn(
-                      "flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0",
-                      activeTab === tab.id
-                        ? "bg-primary/10 text-primary border border-primary/20"
-                        : "text-muted-foreground hover:text-foreground hover:bg-secondary"
-                    )}
-                  >
-                    <tab.icon className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
-                    <span>{tab.label}</span>
-                  </button>
+                  <option key={tab.id} value={tab.id}>
+                    {tab.label}
+                  </option>
                 ))}
+              </select>
+            </div>
+
+            {/* Desktop: Tabs Sidebar - Fixed on Left */}
+            <div className="hidden lg:block w-48 xl:w-64 flex-shrink-0">
+              <div className="sticky top-6 space-y-1">
+                <div className="flex flex-col gap-1 overflow-y-auto max-h-[calc(100vh-8rem)] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                  {tabs.map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={cn(
+                        "w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 text-left",
+                        activeTab === tab.id
+                          ? "bg-primary/10 text-primary border border-primary/20"
+                          : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                      )}
+                    >
+                      <tab.icon className="h-5 w-5 flex-shrink-0" />
+                      <span>{tab.label}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
             {/* Content */}
-            <div className="flex-1 glass-card rounded-xl p-4 sm:p-5 md:p-6">
+            <div className="flex-1 min-w-0 glass-card rounded-xl p-4 sm:p-5 md:p-6">
               {activeTab === "profile" && (
                 <div className="space-y-4 sm:space-y-5 md:space-y-6">
                   <h2 className="text-base sm:text-lg font-semibold text-foreground">Profile Settings</h2>
