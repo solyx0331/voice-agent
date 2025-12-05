@@ -6,51 +6,56 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 220 15% 15%;
+    /* Evolved Sound Light Theme - Color Palette */
+    --background: 220 20% 96%; /* #F4F6F9 - Soft blue-grey canvas */
+    --foreground: 215 28% 17%; /* #1F2937 - Dark Charcoal primary text */
 
-    --card: 0 0% 100%;
-    --card-foreground: 220 15% 15%;
+    --card: 0 0% 100%; /* #FFFFFF - Pure White cards */
+    --card-foreground: 215 28% 17%; /* #1F2937 - Dark Charcoal */
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 15% 15%;
+    --popover-foreground: 215 28% 17%;
 
-    --primary: 195 85% 48%;
+    --primary: 214 100% 50%; /* #007BFF - Evolved Blue */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 10% 96%;
-    --secondary-foreground: 220 15% 25%;
+    --secondary: 220 14% 96%; /* #F3F4F6 - Light grey for secondary backgrounds */
+    --secondary-foreground: 215 28% 17%;
 
-    --muted: 220 10% 96%;
-    --muted-foreground: 220 10% 45%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 215 16% 47%; /* #6B7280 - Cool Grey for secondary text */
 
-    --accent: 195 85% 48%;
+    --accent: 195 100% 47%; /* #00AEEF - Cyan Accent for active states */
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 195 85% 48%;
+    --border: 216 12% 84%; /* #D1D5DB - Light Grey for borders */
+    --input: 216 12% 84%;
+    --ring: 214 100% 50%; /* #007BFF - Blue focus ring */
 
-    --radius: 0.5rem;
+    --radius: 0.5rem; /* 8px rounded corners */
 
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 220 15% 15%;
-    --sidebar-primary: 195 85% 48%;
+    /* Sidebar - Deep Navy */
+    --sidebar-background: 204 100% 14%; /* #002B49 - Deep Navy */
+    --sidebar-foreground: 0 0% 100%; /* White text on navy */
+    --sidebar-primary: 195 100% 47%; /* #00AEEF - Cyan for active link */
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 10% 96%;
-    --sidebar-accent-foreground: 220 15% 25%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 195 85% 48%;
+    --sidebar-accent: 204 100% 18%; /* Slightly lighter navy for hover */
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 204 100% 12%; /* Darker navy border */
+    --sidebar-ring: 195 100% 47%;
 
-    /* Custom tokens - Light theme */
-    --gradient-light: linear-gradient(135deg, hsl(0 0% 100%) 0%, hsl(220 10% 98%) 50%, hsl(0 0% 100%) 100%);
-    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%) 0%, hsl(220 10% 99%) 100%);
-    --glow-primary: 0 0 20px hsl(195 85% 48% / 0.15);
-    --shadow-elevated: 0 2px 12px hsl(220 15% 15% / 0.08), 0 1px 4px hsl(220 15% 15% / 0.04);
-    --shadow-card: 0 1px 3px hsl(220 15% 15% / 0.06), 0 1px 2px hsl(220 15% 15% / 0.04);
+    /* Custom tokens - Evolved Sound Style */
+    --gradient-light: #F4F6F9; /* Solid soft blue-grey background */
+    --gradient-card: #FFFFFF; /* Pure white cards */
+    --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* Soft elevation shadow */
+    --shadow-elevated: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    
+    /* Chat bubble colors */
+    --ai-bubble: 207 90% 94%; /* #E3F2FD - Light Blue for AI */
+    --user-bubble: 220 14% 96%; /* #F3F4F6 - Light Grey for User */
   }
 }
 
@@ -62,7 +67,7 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-family: 'Inter', system-ui, sans-serif;
-    background: var(--gradient-light);
+    background-color: var(--gradient-light);
     min-height: 100vh;
   }
 }
@@ -70,17 +75,13 @@
 @layer utilities {
   .glass-card {
     background: var(--gradient-card);
-    backdrop-filter: blur(8px);
     border: 1px solid hsl(var(--border));
     box-shadow: var(--shadow-card);
-  }
-
-  .glow-primary {
-    box-shadow: var(--glow-primary);
+    border-radius: 8px;
   }
 
   .text-gradient {
-    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(195 90% 60%) 100%);
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -88,5 +89,14 @@
 
   .animate-pulse-slow {
     animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  /* Input field focus state */
+  input:focus,
+  textarea:focus,
+  select:focus {
+    border-color: hsl(var(--ring));
+    outline: none;
+    box-shadow: 0 0 0 3px hsl(var(--ring) / 0.1);
   }
 }

@@ -72,7 +72,7 @@ const Settings = () => {
                       <input
                         type="text"
                         defaultValue="Evolved"
-                        className="w-full px-4 py-2 bg-secondary border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                        className="w-full px-4 py-2 bg-white border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                       />
                     </div>
                     <div>
@@ -80,7 +80,7 @@ const Settings = () => {
                       <input
                         type="text"
                         defaultValue="Sound"
-                        className="w-full px-4 py-2 bg-secondary border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                        className="w-full px-4 py-2 bg-white border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                       />
                     </div>
                     <div>
@@ -88,7 +88,7 @@ const Settings = () => {
                       <input
                         type="email"
                         defaultValue="admin@evolvedsound.com"
-                        className="w-full px-4 py-2 bg-secondary border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                        className="w-full px-4 py-2 bg-white border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                       />
                     </div>
                     <div>
@@ -96,14 +96,14 @@ const Settings = () => {
                       <input
                         type="text"
                         defaultValue="Evolved Sound"
-                        className="w-full px-4 py-2 bg-secondary border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                        className="w-full px-4 py-2 bg-white border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                       />
                     </div>
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-foreground mb-2">Timezone</label>
-                    <select className="w-full px-4 py-2 bg-secondary border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50">
+                    <select className="w-full px-4 py-2 bg-white border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50">
                       <option>UTC-8 (Pacific Time)</option>
                       <option>UTC-5 (Eastern Time)</option>
                       <option>UTC+0 (London)</option>
@@ -151,7 +151,7 @@ const Settings = () => {
                   
                   <div>
                     <label className="block text-sm font-medium text-foreground mb-2">Default Voice Model</label>
-                    <select className="w-full px-4 py-2 bg-secondary border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50">
+                    <select className="w-full px-4 py-2 bg-white border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50">
                       <option>ElevenLabs - Aria</option>
                       <option>ElevenLabs - Roger</option>
                       <option>ElevenLabs - Sarah</option>

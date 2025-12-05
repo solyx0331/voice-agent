@@ -33,7 +33,7 @@ export function LiveCallWidget() {
         {Array.from({ length: 20 }).map((_, i) => (
           <div
             key={i}
-            className="w-1 bg-primary/60 rounded-full"
+            className="w-1 bg-primary rounded-full"
             style={{
               height: `${Math.random() * 100}%`,
               animation: `pulse 0.5s ease-in-out ${i * 0.05}s infinite alternate`,

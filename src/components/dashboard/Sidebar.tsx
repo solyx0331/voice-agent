@@ -43,13 +43,13 @@ export function Sidebar() {
             className={({ isActive }) => cn(
               "w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200",
               isActive
-                ? "bg-primary/10 text-primary border border-primary/20"
-                : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent"
+                ? "bg-sidebar-primary text-white"
+                : "text-white/70 hover:text-white hover:bg-sidebar-accent"
             )}
           >
             {({ isActive }) => (
               <>
-                <item.icon className={cn("h-5 w-5", isActive && "text-primary")} />
+                <item.icon className={cn("h-5 w-5", isActive && "text-white")} />
                 {item.label}
               </>
             )}
@@ -62,7 +62,7 @@ export function Sidebar() {
         {bottomNavItems.map((item) => (
           <button
             key={item.label}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-all duration-200"
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-white/70 hover:text-white hover:bg-sidebar-accent transition-all duration-200"
           >
             <item.icon className="h-5 w-5" />
             {item.label}
