@@ -95,6 +95,31 @@ class ApiService {
     return newContact;
   }
 
+  async updateContact(contactId: string, updates: Partial<Omit<Contact, "id">>): Promise<Contact> {
+    await delay(600);
+    const contact = mockContacts.find(c => c.id === contactId);
+    if (!contact) throw new Error("Contact not found");
+    Object.assign(contact, updates);
+    return contact;
+  }
+
+  async deleteContact(contactId: string): Promise<void> {
+    await delay(500);
+    const index = mockContacts.findIndex(c => c.id === contactId);
+    if (index === -1) throw new Error("Contact not found");
+    mockContacts.splice(index, 1);
+  }
+
+  async getContactCalls(contactId: string): Promise<Call[]> {
+    await delay(400);
+    const contact = mockContacts.find(c => c.id === contactId);
+    if (!contact) throw new Error("Contact not found");
+    // Filter calls by contact name or phone
+    return mockCalls.filter(call => 
+      call.contact === contact.name || call.phone === contact.phone
+    );
+  }
+
   async createAgent(agent: Omit<VoiceAgent, "id">): Promise<VoiceAgent> {
     await delay(800);
     const newAgent: VoiceAgent = {

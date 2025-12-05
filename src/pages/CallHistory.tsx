@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Call } from "@/lib/api/types";
+import { useSearchParams } from "react-router-dom";
 
 const typeIcons = {
   inbound: PhoneIncoming,
@@ -33,7 +34,8 @@ const statusBadge = {
 };
 
 const CallHistory = () => {
-  const [search, setSearch] = useState("");
+  const [searchParams] = useSearchParams();
+  const [search, setSearch] = useState(searchParams.get("search") || "");
   const [selectedAgent, setSelectedAgent] = useState<string | undefined>();
   const [selectedType, setSelectedType] = useState<string | undefined>();
   const [isAgentFilterOpen, setIsAgentFilterOpen] = useState(false);

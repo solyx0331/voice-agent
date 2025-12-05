@@ -20,3 +20,26 @@ export function useCreateContact() {
   });
 }
 
+export function useUpdateContact() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ contactId, updates }: { contactId: string; updates: Partial<Omit<Contact, "id">> }) =>
+      apiService.updateContact(contactId, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["contacts"] });
+    },
+  });
+}
+
+export function useDeleteContact() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (contactId: string) => apiService.deleteContact(contactId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["contacts"] });
+    },
+  });
+}
+

@@ -3,13 +3,16 @@ import { Header } from "@/components/dashboard/Header";
 import { Button } from "@/components/ui/button";
 import { Plus, Search, Filter, Mail, Phone, MoreVertical } from "lucide-react";
 import { useState } from "react";
-import { useContacts, useCreateContact } from "@/hooks/useContacts";
+import { useContacts, useCreateContact, useUpdateContact, useDeleteContact } from "@/hooks/useContacts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
+import { Contact } from "@/lib/api/types";
 
 const statusColors = {
   active: "bg-emerald-500/20 text-emerald-400",
@@ -18,9 +21,13 @@ const statusColors = {
 };
 
 const Contacts = () => {
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [newContact, setNewContact] = useState({
     name: "",
     email: "",
@@ -28,9 +35,24 @@ const Contacts = () => {
     company: "",
     status: "lead" as const,
   });
+  const [editContact, setEditContact] = useState<{
+    name: string;
+    email: string;
+    phone: string;
+    company: string;
+    status: Contact["status"];
+  }>({
+    name: "",
+    email: "",
+    phone: "",
+    company: "",
+    status: "lead",
+  });
 
   const { data: contacts, isLoading } = useContacts(search || undefined, statusFilter || undefined);
   const createContact = useCreateContact();
+  const updateContact = useUpdateContact();
+  const deleteContact = useDeleteContact();
 
   const handleCreateContact = async () => {
     if (!newContact.name || !newContact.email || !newContact.phone) {
@@ -50,6 +72,55 @@ const Contacts = () => {
     } catch (error) {
       toast.error("Failed to create contact");
     }
+  };
+
+  const handleEditContact = (contact: Contact) => {
+    setSelectedContact(contact);
+    setEditContact({
+      name: contact.name,
+      email: contact.email,
+      phone: contact.phone,
+      company: contact.company,
+      status: contact.status,
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdateContact = async () => {
+    if (!selectedContact || !editContact.name || !editContact.email || !editContact.phone) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+
+    try {
+      await updateContact.mutateAsync({
+        contactId: selectedContact.id,
+        updates: editContact,
+      });
+      toast.success("Contact updated successfully");
+      setIsEditDialogOpen(false);
+      setSelectedContact(null);
+    } catch (error) {
+      toast.error("Failed to update contact");
+    }
+  };
+
+  const handleDeleteContact = async () => {
+    if (!selectedContact) return;
+
+    try {
+      await deleteContact.mutateAsync(selectedContact.id);
+      toast.success("Contact deleted successfully");
+      setIsDeleteDialogOpen(false);
+      setSelectedContact(null);
+    } catch (error) {
+      toast.error("Failed to delete contact");
+    }
+  };
+
+  const handleViewCallHistory = (contact: Contact) => {
+    // Navigate to call history with contact name as search filter
+    navigate(`/call-history?search=${encodeURIComponent(contact.name)}`);
   };
 
   return (
@@ -193,13 +264,19 @@ const Contacts = () => {
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => toast.info("Edit contact functionality coming soon")}>
+                      <DropdownMenuItem onClick={() => handleEditContact(contact)}>
                         Edit Contact
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => toast.info("View history functionality coming soon")}>
+                      <DropdownMenuItem onClick={() => handleViewCallHistory(contact)}>
                         View Call History
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => toast.info("Delete contact functionality coming soon")} className="text-destructive">
+                      <DropdownMenuItem 
+                        onClick={() => {
+                          setSelectedContact(contact);
+                          setIsDeleteDialogOpen(true);
+                        }} 
+                        className="text-destructive"
+                      >
                         Delete Contact
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -237,6 +314,92 @@ const Contacts = () => {
           </div>
         </div>
       </main>
+
+      {/* Edit Contact Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Contact</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="edit-name">Name *</Label>
+              <Input
+                id="edit-name"
+                value={editContact.name}
+                onChange={(e) => setEditContact({ ...editContact, name: e.target.value })}
+                placeholder="John Doe"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-email">Email *</Label>
+              <Input
+                id="edit-email"
+                type="email"
+                value={editContact.email}
+                onChange={(e) => setEditContact({ ...editContact, email: e.target.value })}
+                placeholder="john@example.com"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-phone">Phone *</Label>
+              <Input
+                id="edit-phone"
+                value={editContact.phone}
+                onChange={(e) => setEditContact({ ...editContact, phone: e.target.value })}
+                placeholder="+1 (555) 123-4567"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-company">Company</Label>
+              <Input
+                id="edit-company"
+                value={editContact.company}
+                onChange={(e) => setEditContact({ ...editContact, company: e.target.value })}
+                placeholder="Company Name"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-status">Status</Label>
+              <select
+                id="edit-status"
+                value={editContact.status}
+                onChange={(e) => setEditContact({ ...editContact, status: e.target.value as Contact["status"] })}
+                className="w-full px-4 py-2 bg-white border border-border rounded-lg"
+              >
+                <option value="lead">Lead</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+            <Button onClick={handleUpdateContact} className="w-full" disabled={updateContact.isPending || !editContact.name || !editContact.email || !editContact.phone}>
+              {updateContact.isPending ? "Updating..." : "Update Contact"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Contact Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Contact</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{selectedContact?.name}"? This action cannot be undone and will permanently remove the contact and all associated data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteContact}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteContact.isPending}
+            >
+              {deleteContact.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

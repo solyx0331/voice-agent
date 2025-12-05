@@ -44,8 +44,8 @@ export function Sidebar() {
     <aside className="fixed left-0 top-0 h-screen w-16 sm:w-64 bg-sidebar border-r border-sidebar-border flex flex-col z-50 transition-all duration-300">
       {/* Logo */}
       <div className="p-3 sm:p-6 border-b border-sidebar-border flex items-center justify-center">
-        <div className="bg-white rounded-full p-2.5 shadow-sm flex items-center justify-center">
-          <img src={logo} alt="Evolved Sound" className="h-8 sm:h-12 w-auto" />
+        <div className="bg-white rounded-full w-12 h-12 sm:w-16 sm:h-16 shadow-sm flex items-center justify-center p-2">
+          <img src={logo} alt="Evolved Sound" className="h-full w-full object-contain" />
         </div>
       </div>
 
