@@ -68,38 +68,38 @@ export function LiveCallWidget() {
   }
 
   return (
-    <div className="glass-card rounded-xl p-5 border-primary/30">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-foreground">Live Call</h2>
-        <div className="flex items-center gap-2">
+    <div className="glass-card rounded-xl p-4 sm:p-5 border-primary/30">
+      <div className="flex items-center justify-between mb-3 sm:mb-4">
+        <h2 className="text-base sm:text-lg font-semibold text-foreground">Live Call</h2>
+        <div className="flex items-center gap-1.5 sm:gap-2">
           <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-          <span className="text-sm text-primary font-medium">Active</span>
+          <span className="text-xs sm:text-sm text-primary font-medium">Active</span>
         </div>
       </div>
 
-      <div className="bg-secondary/50 rounded-lg p-4 mb-4">
-        <div className="flex items-center gap-4 mb-3">
-          <div className="h-12 w-12 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center">
-            <Phone className="h-5 w-5 text-primary" />
+      <div className="bg-secondary/50 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
+        <div className="flex items-center gap-3 sm:gap-4 mb-2 sm:mb-3">
+          <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center flex-shrink-0">
+            <Phone className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
           </div>
-          <div>
-            <p className="font-medium text-foreground">{liveCall.contact}</p>
-            <p className="text-sm text-muted-foreground">{liveCall.phone}</p>
+          <div className="min-w-0 flex-1">
+            <p className="font-medium text-foreground text-sm sm:text-base truncate">{liveCall.contact}</p>
+            <p className="text-xs sm:text-sm text-muted-foreground truncate">{liveCall.phone}</p>
           </div>
         </div>
 
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">Agent: {liveCall.agent}</span>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-0 text-xs sm:text-sm">
+          <span className="text-muted-foreground truncate">Agent: {liveCall.agent}</span>
           <span className="text-primary font-mono">{formatTime(liveCall.duration)}</span>
         </div>
       </div>
 
       {/* Audio Waveform Visualization */}
-      <div className="flex items-center justify-center gap-1 h-12 mb-4">
+      <div className="flex items-center justify-center gap-0.5 sm:gap-1 h-10 sm:h-12 mb-3 sm:mb-4">
         {Array.from({ length: 20 }).map((_, i) => (
           <div
             key={i}
-            className="w-1 bg-primary rounded-full"
+            className="w-0.5 sm:w-1 bg-primary rounded-full"
             style={{
               height: `${Math.random() * 100}%`,
               animation: `pulse 0.5s ease-in-out ${i * 0.05}s infinite alternate`,
@@ -108,28 +108,28 @@ export function LiveCallWidget() {
         ))}
       </div>
 
-      <div className="flex items-center justify-center gap-4">
+      <div className="flex items-center justify-center gap-2 sm:gap-4">
         <button
           onClick={handleMute}
-          className={`h-10 w-10 rounded-full border flex items-center justify-center transition-all ${
+          className={`h-9 w-9 sm:h-10 sm:w-10 rounded-full border flex items-center justify-center transition-all flex-shrink-0 ${
             isMuted
               ? "bg-destructive/20 border-destructive text-destructive"
               : "bg-secondary border-border text-muted-foreground hover:text-primary hover:border-primary/50"
           }`}
           title={isMuted ? "Unmute" : "Mute"}
         >
-          {isMuted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+          {isMuted ? <MicOff className="h-4 w-4 sm:h-5 sm:w-5" /> : <Mic className="h-4 w-4 sm:h-5 sm:w-5" />}
         </button>
         <button
           onClick={handleEndCall}
-          className="h-12 w-12 rounded-full bg-destructive flex items-center justify-center text-destructive-foreground hover:bg-destructive/90 transition-all"
+          className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-destructive flex items-center justify-center text-destructive-foreground hover:bg-destructive/90 transition-all flex-shrink-0"
           title="End Call"
         >
-          <Phone className="h-5 w-5" />
+          <Phone className="h-4 w-4 sm:h-5 sm:w-5" />
         </button>
         <div className="relative group">
-          <button className="h-10 w-10 rounded-full bg-secondary border border-border flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary/50 transition-all">
-            <Volume2 className="h-5 w-5" />
+          <button className="h-9 w-9 sm:h-10 sm:w-10 rounded-full bg-secondary border border-border flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary/50 transition-all flex-shrink-0">
+            <Volume2 className="h-4 w-4 sm:h-5 sm:w-5" />
           </button>
           <div className="absolute right-0 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity">
             <div className="bg-card border border-border rounded-lg p-2 shadow-lg">

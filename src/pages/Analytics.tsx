@@ -23,18 +23,18 @@ const Analytics = () => {
     <div className="min-h-screen bg-background">
       <Sidebar />
       
-      <main className="ml-64">
+      <main className="ml-16 sm:ml-64">
         <Header />
         
-        <div className="p-6 space-y-6">
-          <div className="flex items-center justify-between">
+        <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-5 md:space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-foreground">Analytics</h1>
-              <p className="text-muted-foreground">Track performance and insights</p>
+              <h1 className="text-xl sm:text-2xl font-bold text-foreground">Analytics</h1>
+              <p className="text-sm sm:text-base text-muted-foreground">Track performance and insights</p>
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline">
+                <Button variant="outline" size="sm" className="w-full sm:w-auto">
                   <Calendar className="h-4 w-4 mr-2" />
                   Last 7 Days
                 </Button>
@@ -49,10 +49,10 @@ const Analytics = () => {
           </div>
 
           {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {isLoading ? (
               Array.from({ length: 4 }).map((_, i) => (
-                <Skeleton key={i} className="h-32 rounded-xl" />
+                <Skeleton key={i} className="h-28 sm:h-32 rounded-xl" />
               ))
             ) : (
               stats.map((stat, index) => (
@@ -64,12 +64,12 @@ const Analytics = () => {
           </div>
 
           {/* Charts Row */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5 md:gap-6">
             {/* Call Volume Chart */}
-            <div className="glass-card rounded-xl p-5">
-              <h3 className="text-lg font-semibold text-foreground mb-4">Call Volume (This Week)</h3>
+            <div className="glass-card rounded-xl p-4 sm:p-5">
+              <h3 className="text-base sm:text-lg font-semibold text-foreground mb-3 sm:mb-4">Call Volume (This Week)</h3>
               {isLoading ? (
-                <Skeleton className="h-[250px] w-full" />
+                <Skeleton className="h-[200px] sm:h-[250px] w-full" />
               ) : (
                 <ResponsiveContainer width="100%" height={250}>
                   <AreaChart data={analyticsData?.callVolume || []}>
@@ -93,10 +93,10 @@ const Analytics = () => {
             </div>
 
             {/* Hourly Distribution */}
-            <div className="glass-card rounded-xl p-5">
-              <h3 className="text-lg font-semibold text-foreground mb-4">Peak Hours (Today)</h3>
+            <div className="glass-card rounded-xl p-4 sm:p-5">
+              <h3 className="text-base sm:text-lg font-semibold text-foreground mb-3 sm:mb-4">Peak Hours (Today)</h3>
               {isLoading ? (
-                <Skeleton className="h-[250px] w-full" />
+                <Skeleton className="h-[200px] sm:h-[250px] w-full" />
               ) : (
                 <ResponsiveContainer width="100%" height={250}>
                   <BarChart data={analyticsData?.hourlyData || []}>
@@ -115,14 +115,14 @@ const Analytics = () => {
           </div>
 
           {/* Bottom Row */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6">
             {/* Agent Performance */}
-            <div className="lg:col-span-2 glass-card rounded-xl p-5">
-              <h3 className="text-lg font-semibold text-foreground mb-4">Agent Performance</h3>
+            <div className="lg:col-span-2 glass-card rounded-xl p-4 sm:p-5">
+              <h3 className="text-base sm:text-lg font-semibold text-foreground mb-3 sm:mb-4">Agent Performance</h3>
               {isLoading ? (
-                <Skeleton className="h-48 w-full" />
+                <Skeleton className="h-40 sm:h-48 w-full" />
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   {(analyticsData?.agentPerformance || []).map((agent) => (
                   <div key={agent.name} className="flex items-center justify-between">
                     <div className="flex-1">
@@ -145,10 +145,10 @@ const Analytics = () => {
             </div>
 
             {/* Call Type Distribution */}
-            <div className="glass-card rounded-xl p-5">
-              <h3 className="text-lg font-semibold text-foreground mb-4">Call Distribution</h3>
+            <div className="glass-card rounded-xl p-4 sm:p-5">
+              <h3 className="text-base sm:text-lg font-semibold text-foreground mb-3 sm:mb-4">Call Distribution</h3>
               {isLoading ? (
-                <Skeleton className="h-[200px] w-full" />
+                <Skeleton className="h-[180px] sm:h-[200px] w-full" />
               ) : (
                 <ResponsiveContainer width="100%" height={200}>
                   <PieChart>
@@ -171,11 +171,11 @@ const Analytics = () => {
                   </PieChart>
                 </ResponsiveContainer>
               )}
-              <div className="flex justify-center gap-4 mt-2">
+              <div className="flex flex-wrap justify-center gap-2 sm:gap-4 mt-2">
                 {(analyticsData?.callTypeData || []).map((item) => (
-                  <div key={item.name} className="flex items-center gap-2">
-                    <div className="h-3 w-3 rounded-full" style={{ backgroundColor: item.color }} />
-                    <span className="text-sm text-muted-foreground">{item.name} ({item.value}%)</span>
+                  <div key={item.name} className="flex items-center gap-1.5 sm:gap-2">
+                    <div className="h-2.5 w-2.5 sm:h-3 sm:w-3 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
+                    <span className="text-xs sm:text-sm text-muted-foreground">{item.name} ({item.value}%)</span>
                   </div>
                 ))}
               </div>

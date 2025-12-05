@@ -53,7 +53,7 @@ const VoiceAgents = () => {
     <div className="min-h-screen bg-background">
       <Sidebar />
       
-      <main className="ml-0 sm:ml-16 md:ml-64">
+      <main className="ml-16 sm:ml-64">
         <Header />
         
         <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-5 md:space-y-6">

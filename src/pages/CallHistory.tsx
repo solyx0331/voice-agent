@@ -140,7 +140,7 @@ const CallHistory = () => {
     <div className="min-h-screen bg-background">
       <Sidebar />
       
-      <main className="ml-0 sm:ml-16 md:ml-64">
+      <main className="ml-16 sm:ml-64">
         <Header />
         
         <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-5 md:space-y-6">
@@ -155,38 +155,41 @@ const CallHistory = () => {
             </Button>
           </div>
 
-          {/* Search */}
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1 max-w-md">
-              <input
-                type="text"
-                placeholder="Search calls..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-4 pr-4 py-2 bg-white border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-              />
+          {/* Search and Filters */}
+          <div className="space-y-3 sm:space-y-4">
+            {/* Search */}
+            <div className="w-full">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search calls..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full pl-3 sm:pl-4 pr-3 sm:pr-4 py-2.5 sm:py-2 bg-white border border-border rounded-lg text-sm sm:text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                />
+              </div>
             </div>
-          </div>
 
-          {/* Filters */}
-          <div className="flex flex-wrap items-center gap-3">
+            {/* Filters */}
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full">
             <Popover open={isAgentFilterOpen} onOpenChange={setIsAgentFilterOpen}>
               <PopoverTrigger asChild>
                 <Button 
                   variant={selectedAgent ? "default" : "outline"} 
                   size="sm"
-                  className="relative"
+                  className="relative h-9 sm:h-10 px-2.5 sm:px-3 text-xs sm:text-sm"
                 >
-                  <Filter className="h-4 w-4 mr-2" />
-                  Filter by Agent
+                  <Filter className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2 flex-shrink-0" />
+                  <span className="hidden sm:inline">Filter by Agent</span>
+                  <span className="sm:hidden">Agent</span>
                   {selectedAgent && (
-                    <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
+                    <Badge className="ml-1.5 sm:ml-2 h-4 w-4 sm:h-5 sm:w-5 rounded-full p-0 flex items-center justify-center text-[10px] sm:text-xs flex-shrink-0">
                       1
                     </Badge>
                   )}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-64" align="start">
+              <PopoverContent className="w-[calc(100vw-1.5rem)] sm:w-64 max-w-[calc(100vw-1.5rem)] sm:max-w-none" align="start">
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <h3 className="font-semibold text-sm">Filter by Agent</h3>
@@ -241,18 +244,19 @@ const CallHistory = () => {
                 <Button 
                   variant={selectedType ? "default" : "outline"} 
                   size="sm"
-                  className="relative"
+                  className="relative h-9 sm:h-10 px-2.5 sm:px-3 text-xs sm:text-sm"
                 >
-                  <Phone className="h-4 w-4 mr-2" />
-                  Call Type
+                  <Phone className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2 flex-shrink-0" />
+                  <span className="hidden sm:inline">Call Type</span>
+                  <span className="sm:hidden">Type</span>
                   {selectedType && (
-                    <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
+                    <Badge className="ml-1.5 sm:ml-2 h-4 w-4 sm:h-5 sm:w-5 rounded-full p-0 flex items-center justify-center text-[10px] sm:text-xs flex-shrink-0">
                       1
                     </Badge>
                   )}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-64" align="start">
+              <PopoverContent className="w-[calc(100vw-1.5rem)] sm:w-64 max-w-[calc(100vw-1.5rem)] sm:max-w-none" align="start">
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <h3 className="font-semibold text-sm">Filter by Call Type</h3>
@@ -347,6 +351,7 @@ const CallHistory = () => {
                 </div>
               </PopoverContent>
             </Popover>
+          </div>
           </div>
 
           {/* Calls Table - Responsive */}
