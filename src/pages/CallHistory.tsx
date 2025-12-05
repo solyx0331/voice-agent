@@ -1,13 +1,15 @@
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { Header } from "@/components/dashboard/Header";
 import { Button } from "@/components/ui/button";
-import { Phone, PhoneIncoming, PhoneOutgoing, PhoneMissed, Download, Filter, Calendar } from "lucide-react";
+import { Phone, PhoneIncoming, PhoneOutgoing, PhoneMissed, Download, Filter, Calendar, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCalls } from "@/hooks/useCalls";
 import { useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { apiService } from "@/lib/api/api";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Badge } from "@/components/ui/badge";
 
 const typeIcons = {
   inbound: PhoneIncoming,
@@ -31,6 +33,8 @@ const CallHistory = () => {
   const [search, setSearch] = useState("");
   const [selectedAgent, setSelectedAgent] = useState<string | undefined>();
   const [selectedType, setSelectedType] = useState<string | undefined>();
+  const [isAgentFilterOpen, setIsAgentFilterOpen] = useState(false);
+  const [isTypeFilterOpen, setIsTypeFilterOpen] = useState(false);
 
   const { data: calls, isLoading } = useCalls({
     search: search || undefined,
@@ -91,46 +95,184 @@ const CallHistory = () => {
           </div>
 
           {/* Filters */}
-          <div className="flex items-center gap-4">
-            <Button 
-              variant={selectedAgent ? "default" : "outline"} 
-              size="sm"
-              onClick={() => setSelectedAgent(selectedAgent ? undefined : undefined)}
-            >
-              <Filter className="h-4 w-4 mr-2" />
-              Filter by Agent
-            </Button>
-            {selectedAgent && (
-              <select
-                value={selectedAgent}
-                onChange={(e) => setSelectedAgent(e.target.value || undefined)}
-                className="px-3 py-1.5 bg-white border border-border rounded-lg text-sm"
-              >
-                <option value="">All Agents</option>
-                {uniqueAgents.map(agent => (
-                  <option key={agent} value={agent}>{agent}</option>
-                ))}
-              </select>
-            )}
-            <Button 
-              variant={selectedType ? "default" : "outline"} 
-              size="sm"
-            >
-              <Phone className="h-4 w-4 mr-2" />
-              Call Type
-            </Button>
-            {selectedType && (
-              <select
-                value={selectedType}
-                onChange={(e) => setSelectedType(e.target.value || undefined)}
-                className="px-3 py-1.5 bg-white border border-border rounded-lg text-sm"
-              >
-                <option value="">All Types</option>
-                <option value="inbound">Inbound</option>
-                <option value="outbound">Outbound</option>
-                <option value="missed">Missed</option>
-              </select>
-            )}
+          <div className="flex flex-wrap items-center gap-3">
+            <Popover open={isAgentFilterOpen} onOpenChange={setIsAgentFilterOpen}>
+              <PopoverTrigger asChild>
+                <Button 
+                  variant={selectedAgent ? "default" : "outline"} 
+                  size="sm"
+                  className="relative"
+                >
+                  <Filter className="h-4 w-4 mr-2" />
+                  Filter by Agent
+                  {selectedAgent && (
+                    <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
+                      1
+                    </Badge>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64" align="start">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold text-sm">Filter by Agent</h3>
+                    {selectedAgent && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedAgent(undefined);
+                          setIsAgentFilterOpen(false);
+                        }}
+                        className="h-6 px-2 text-xs"
+                      >
+                        Clear
+                      </Button>
+                    )}
+                  </div>
+                  <select
+                    value={selectedAgent || ""}
+                    onChange={(e) => {
+                      setSelectedAgent(e.target.value || undefined);
+                      if (e.target.value) {
+                        setIsAgentFilterOpen(false);
+                      }
+                    }}
+                    className="w-full px-3 py-2 bg-white border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  >
+                    <option value="">All Agents</option>
+                    {uniqueAgents.map(agent => (
+                      <option key={agent} value={agent}>{agent}</option>
+                    ))}
+                  </select>
+                  {selectedAgent && (
+                    <div className="pt-2 border-t">
+                      <Badge variant="secondary" className="text-xs">
+                        {selectedAgent}
+                        <button
+                          onClick={() => setSelectedAgent(undefined)}
+                          className="ml-1 hover:bg-secondary rounded-full p-0.5"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    </div>
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            <Popover open={isTypeFilterOpen} onOpenChange={setIsTypeFilterOpen}>
+              <PopoverTrigger asChild>
+                <Button 
+                  variant={selectedType ? "default" : "outline"} 
+                  size="sm"
+                  className="relative"
+                >
+                  <Phone className="h-4 w-4 mr-2" />
+                  Call Type
+                  {selectedType && (
+                    <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
+                      1
+                    </Badge>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64" align="start">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold text-sm">Filter by Call Type</h3>
+                    {selectedType && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedType(undefined);
+                          setIsTypeFilterOpen(false);
+                        }}
+                        className="h-6 px-2 text-xs"
+                      >
+                        Clear
+                      </Button>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => {
+                        setSelectedType(undefined);
+                        setIsTypeFilterOpen(false);
+                      }}
+                      className={cn(
+                        "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors",
+                        !selectedType 
+                          ? "bg-primary/10 text-primary font-medium" 
+                          : "hover:bg-secondary"
+                      )}
+                    >
+                      All Types
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedType("inbound");
+                        setIsTypeFilterOpen(false);
+                      }}
+                      className={cn(
+                        "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-2",
+                        selectedType === "inbound"
+                          ? "bg-primary/10 text-primary font-medium"
+                          : "hover:bg-secondary"
+                      )}
+                    >
+                      <PhoneIncoming className={cn("h-4 w-4", selectedType === "inbound" ? "text-emerald-400" : "text-emerald-400")} />
+                      Inbound
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedType("outbound");
+                        setIsTypeFilterOpen(false);
+                      }}
+                      className={cn(
+                        "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-2",
+                        selectedType === "outbound"
+                          ? "bg-primary/10 text-primary font-medium"
+                          : "hover:bg-secondary"
+                      )}
+                    >
+                      <PhoneOutgoing className={cn("h-4 w-4", selectedType === "outbound" ? "text-primary" : "text-primary")} />
+                      Outbound
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedType("missed");
+                        setIsTypeFilterOpen(false);
+                      }}
+                      className={cn(
+                        "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-2",
+                        selectedType === "missed"
+                          ? "bg-primary/10 text-primary font-medium"
+                          : "hover:bg-secondary"
+                      )}
+                    >
+                      <PhoneMissed className={cn("h-4 w-4", selectedType === "missed" ? "text-red-400" : "text-red-400")} />
+                      Missed
+                    </button>
+                  </div>
+                  {selectedType && (
+                    <div className="pt-2 border-t">
+                      <Badge variant="secondary" className="text-xs capitalize">
+                        {selectedType}
+                        <button
+                          onClick={() => setSelectedType(undefined)}
+                          className="ml-1 hover:bg-secondary rounded-full p-0.5"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    </div>
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
 
           {/* Calls Table */}
