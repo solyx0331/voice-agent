@@ -1,15 +1,18 @@
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { Header } from "@/components/dashboard/Header";
 import { Button } from "@/components/ui/button";
-import { Phone, PhoneIncoming, PhoneOutgoing, PhoneMissed, Download, Filter, Calendar, X, Play, Pause } from "lucide-react";
+import { Phone, PhoneIncoming, PhoneOutgoing, PhoneMissed, Download, Filter, Calendar, X, Play, Pause, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCalls } from "@/hooks/useCalls";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { apiService } from "@/lib/api/api";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Call } from "@/lib/api/types";
 
 const typeIcons = {
   inbound: PhoneIncoming,
@@ -36,6 +39,10 @@ const CallHistory = () => {
   const [isAgentFilterOpen, setIsAgentFilterOpen] = useState(false);
   const [isTypeFilterOpen, setIsTypeFilterOpen] = useState(false);
   const [playingRecordingId, setPlayingRecordingId] = useState<string | null>(null);
+  const [selectedCall, setSelectedCall] = useState<Call | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [recordingUrl, setRecordingUrl] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
 
   const { data: calls, isLoading } = useCalls({
     search: search || undefined,
@@ -62,6 +69,72 @@ const CallHistory = () => {
   };
 
   const uniqueAgents = Array.from(new Set(calls?.map(c => c.agent) || []));
+
+  const handleViewDetails = (call: Call) => {
+    setSelectedCall(call);
+    setIsDetailModalOpen(true);
+    if (call.recording && playingRecordingId !== call.id) {
+      setPlayingRecordingId(null);
+      setRecordingUrl(null);
+    }
+  };
+
+  const handlePlayRecording = async (callId: string) => {
+    try {
+      if (playingRecordingId === callId && audioRef.current) {
+        // Pause if already playing
+        audioRef.current.pause();
+        setPlayingRecordingId(null);
+        return;
+      }
+
+      // Stop any currently playing recording
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+
+      const url = await apiService.playRecording(callId);
+      setRecordingUrl(url);
+      setPlayingRecordingId(callId);
+      
+      // Play the audio
+      if (audioRef.current) {
+        audioRef.current.src = url;
+        audioRef.current.play().catch((error) => {
+          toast.error("Failed to play recording");
+          setPlayingRecordingId(null);
+        });
+      }
+    } catch (error) {
+      toast.error("Failed to load recording");
+      setPlayingRecordingId(null);
+    }
+  };
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const handleEnded = () => {
+      setPlayingRecordingId(null);
+      setRecordingUrl(null);
+    };
+
+    const handleError = () => {
+      toast.error("Error playing recording");
+      setPlayingRecordingId(null);
+      setRecordingUrl(null);
+    };
+
+    audio.addEventListener("ended", handleEnded);
+    audio.addEventListener("error", handleError);
+
+    return () => {
+      audio.removeEventListener("ended", handleEnded);
+      audio.removeEventListener("error", handleError);
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">
@@ -276,19 +349,19 @@ const CallHistory = () => {
             </Popover>
           </div>
 
-          {/* Calls Table - Desktop */}
-          <div className="glass-card rounded-xl overflow-hidden hidden md:block">
+          {/* Calls Table - Responsive */}
+          <div className="glass-card rounded-xl overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full min-w-full">
                 <thead>
                   <tr className="border-b border-border">
-                    <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 lg:px-5 py-3">Contact</th>
-                    <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 lg:px-5 py-3">Agent</th>
-                    <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 lg:px-5 py-3">Type</th>
-                    <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 lg:px-5 py-3">Duration</th>
-                    <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 lg:px-5 py-3">Date & Time</th>
-                    <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 lg:px-5 py-3">Status</th>
-                    <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 lg:px-5 py-3">Actions</th>
+                    <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-3 sm:px-4 lg:px-5 py-3">Contact</th>
+                    <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-3 sm:px-4 lg:px-5 py-3 hidden lg:table-cell">Agent</th>
+                    <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-3 sm:px-4 lg:px-5 py-3 hidden sm:table-cell">Type</th>
+                    <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-3 sm:px-4 lg:px-5 py-3 hidden xl:table-cell">Duration</th>
+                    <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-3 sm:px-4 lg:px-5 py-3 hidden md:table-cell">Date & Time</th>
+                    <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-3 sm:px-4 lg:px-5 py-3 hidden sm:table-cell">Status</th>
+                    <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-3 sm:px-4 lg:px-5 py-3">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -309,63 +382,64 @@ const CallHistory = () => {
                       const Icon = typeIcons[call.type];
                       const isPlaying = playingRecordingId === call.id;
                       return (
-                        <tr key={call.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
-                          <td className="px-4 lg:px-5 py-4">
+                        <tr 
+                          key={call.id} 
+                          className="border-b border-border/50 hover:bg-secondary/30 transition-colors cursor-pointer"
+                          onClick={() => handleViewDetails(call)}
+                        >
+                          <td className="px-3 sm:px-4 lg:px-5 py-4">
                             <div>
                               <span className="font-medium text-foreground">{call.contact}</span>
                               <p className="text-sm text-muted-foreground">{call.phone}</p>
                             </div>
                           </td>
-                          <td className="px-4 lg:px-5 py-4 text-muted-foreground">{call.agent}</td>
-                          <td className="px-4 lg:px-5 py-4">
+                          <td className="px-3 sm:px-4 lg:px-5 py-4 text-muted-foreground hidden lg:table-cell">{call.agent}</td>
+                          <td className="px-3 sm:px-4 lg:px-5 py-4 hidden sm:table-cell">
                             <div className="flex items-center gap-2">
                               <Icon className={cn("h-4 w-4", typeColors[call.type])} />
                               <span className="capitalize text-muted-foreground">{call.type}</span>
                             </div>
                           </td>
-                          <td className="px-4 lg:px-5 py-4 text-muted-foreground">{call.duration}</td>
-                          <td className="px-4 lg:px-5 py-4">
+                          <td className="px-3 sm:px-4 lg:px-5 py-4 text-muted-foreground hidden xl:table-cell">{call.duration}</td>
+                          <td className="px-3 sm:px-4 lg:px-5 py-4 hidden md:table-cell">
                             <div>
                               <span className="text-foreground">{call.date}</span>
                               <p className="text-sm text-muted-foreground">{call.time}</p>
                             </div>
                           </td>
-                          <td className="px-4 lg:px-5 py-4">
+                          <td className="px-3 sm:px-4 lg:px-5 py-4 hidden sm:table-cell">
                             <span className={cn("px-2 py-1 rounded-full text-xs font-medium", statusBadge[call.status])}>
                               {call.status}
                             </span>
                           </td>
-                          <td className="px-4 lg:px-5 py-4">
-                            {call.recording && (
+                          <td className="px-3 sm:px-4 lg:px-5 py-4" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center gap-2">
+                              {call.recording && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-primary hover:text-primary/80 p-2"
+                                  onClick={() => handlePlayRecording(call.id)}
+                                >
+                                  {isPlaying ? (
+                                    <Pause className="h-4 w-4" />
+                                  ) : (
+                                    <Play className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              )}
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="text-primary hover:text-primary/80 p-2"
-                                onClick={async () => {
-                                  if (isPlaying) {
-                                    setPlayingRecordingId(null);
-                                    toast.info("Recording paused");
-                                  } else {
-                                    try {
-                                      setPlayingRecordingId(call.id);
-                                      const recordingUrl = await apiService.playRecording(call.id);
-                                      toast.success("Playing recording...");
-                                      // In real app, this would control an audio player
-                                      window.open(recordingUrl, "_blank");
-                                    } catch (error) {
-                                      setPlayingRecordingId(null);
-                                      toast.error("Failed to load recording");
-                                    }
-                                  }
+                                className="p-2"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleViewDetails(call);
                                 }}
                               >
-                                {isPlaying ? (
-                                  <Pause className="h-4 w-4" />
-                                ) : (
-                                  <Play className="h-4 w-4" />
-                                )}
+                                <Eye className="h-4 w-4" />
                               </Button>
-                            )}
+                            </div>
                           </td>
                         </tr>
                       );
@@ -382,89 +456,121 @@ const CallHistory = () => {
             </div>
           </div>
 
-          {/* Calls Cards - Mobile */}
-          <div className="md:hidden space-y-3">
-            {isLoading ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <Skeleton key={i} className="h-48 rounded-xl" />
-              ))
-            ) : calls && calls.length > 0 ? (
-              calls.map((call) => {
-                const Icon = typeIcons[call.type];
-                const isPlaying = playingRecordingId === call.id;
-                return (
-                  <div key={call.id} className="glass-card rounded-xl p-4 space-y-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h3 className="font-medium text-foreground">{call.contact}</h3>
-                        <p className="text-sm text-muted-foreground">{call.phone}</p>
-                      </div>
-                      {call.recording && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-primary hover:text-primary/80 p-2"
-                          onClick={async () => {
-                            if (isPlaying) {
-                              setPlayingRecordingId(null);
-                              toast.info("Recording paused");
-                            } else {
-                              try {
-                                setPlayingRecordingId(call.id);
-                                const recordingUrl = await apiService.playRecording(call.id);
-                                toast.success("Playing recording...");
-                                window.open(recordingUrl, "_blank");
-                              } catch (error) {
-                                setPlayingRecordingId(null);
-                                toast.error("Failed to load recording");
-                              }
-                            }
-                          }}
-                        >
-                          {isPlaying ? (
-                            <Pause className="h-4 w-4" />
-                          ) : (
-                            <Play className="h-4 w-4" />
-                          )}
-                        </Button>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-2 gap-3 text-sm">
+          {/* Call Detail Modal */}
+          <Dialog open={isDetailModalOpen} onOpenChange={setIsDetailModalOpen}>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              {selectedCall && (
+                <>
+                  <DialogHeader>
+                    <DialogTitle>Call Details</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-6 py-4">
+                    <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <p className="text-xs text-muted-foreground mb-1">Agent</p>
-                        <p className="text-foreground">{call.agent}</p>
+                        <Label className="text-sm text-muted-foreground">Contact</Label>
+                        <p className="font-medium text-foreground">{selectedCall.contact}</p>
+                        <p className="text-sm text-muted-foreground">{selectedCall.phone}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground mb-1">Type</p>
+                        <Label className="text-sm text-muted-foreground">Agent</Label>
+                        <p className="font-medium text-foreground">{selectedCall.agent}</p>
+                      </div>
+                      <div>
+                        <Label className="text-sm text-muted-foreground">Call Type</Label>
                         <div className="flex items-center gap-2">
-                          <Icon className={cn("h-4 w-4", typeColors[call.type])} />
-                          <span className="capitalize text-foreground">{call.type}</span>
+                          {(() => {
+                            const Icon = typeIcons[selectedCall.type];
+                            return <Icon className={cn("h-4 w-4", typeColors[selectedCall.type])} />;
+                          })()}
+                          <span className="capitalize font-medium text-foreground">{selectedCall.type}</span>
                         </div>
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground mb-1">Duration</p>
-                        <p className="text-foreground">{call.duration}</p>
+                        <Label className="text-sm text-muted-foreground">Duration</Label>
+                        <p className="font-medium text-foreground">{selectedCall.duration}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground mb-1">Status</p>
-                        <span className={cn("px-2 py-1 rounded-full text-xs font-medium inline-block", statusBadge[call.status])}>
-                          {call.status}
+                        <Label className="text-sm text-muted-foreground">Date</Label>
+                        <p className="font-medium text-foreground">{selectedCall.date}</p>
+                      </div>
+                      <div>
+                        <Label className="text-sm text-muted-foreground">Time</Label>
+                        <p className="font-medium text-foreground">{selectedCall.time}</p>
+                      </div>
+                      <div>
+                        <Label className="text-sm text-muted-foreground">Status</Label>
+                        <span className={cn("ml-2 px-2 py-1 rounded-full text-xs font-medium inline-block", statusBadge[selectedCall.status])}>
+                          {selectedCall.status}
                         </span>
                       </div>
                     </div>
-                    <div className="pt-2 border-t border-border">
-                      <p className="text-xs text-muted-foreground mb-1">Date & Time</p>
-                      <p className="text-sm text-foreground">{call.date} • {call.time}</p>
-                    </div>
+
+                    {selectedCall.recording && (
+                      <div className="pt-4 border-t border-border">
+                        <Label className="text-sm font-medium mb-3 block">Recording</Label>
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-3">
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={() => handlePlayRecording(selectedCall.id)}
+                              className="gap-2"
+                            >
+                              {playingRecordingId === selectedCall.id ? (
+                                <>
+                                  <Pause className="h-4 w-4" />
+                                  Pause
+                                </>
+                              ) : (
+                                <>
+                                  <Play className="h-4 w-4" />
+                                  Play Recording
+                                </>
+                              )}
+                            </Button>
+                            {playingRecordingId === selectedCall.id && recordingUrl && (
+                              <span className="text-sm text-muted-foreground">Playing...</span>
+                            )}
+                          </div>
+                          {recordingUrl && playingRecordingId === selectedCall.id && (
+                            <audio
+                              controls
+                              className="w-full"
+                              autoPlay
+                              key={recordingUrl}
+                              onPlay={() => setPlayingRecordingId(selectedCall.id)}
+                              onPause={() => {
+                                if (playingRecordingId === selectedCall.id) {
+                                  setPlayingRecordingId(null);
+                                }
+                              }}
+                              onEnded={() => {
+                                setPlayingRecordingId(null);
+                                setRecordingUrl(null);
+                              }}
+                            >
+                              <source src={recordingUrl} type="audio/mpeg" />
+                              Your browser does not support the audio element.
+                            </audio>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                );
-              })
-            ) : (
-              <div className="glass-card rounded-xl p-8 text-center text-muted-foreground">
-                No calls found
-              </div>
-            )}
-          </div>
+                </>
+              )}
+            </DialogContent>
+          </Dialog>
+
+          {/* Hidden audio element for table row playback */}
+          <audio 
+            ref={audioRef} 
+            style={{ display: 'none' }}
+            onEnded={() => {
+              setPlayingRecordingId(null);
+              setRecordingUrl(null);
+            }}
+          />
         </div>
       </main>
     </div>
