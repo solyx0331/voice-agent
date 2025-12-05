@@ -146,40 +146,44 @@ export function Header() {
             <DialogHeader>
               <DialogTitle>Create New Voice Agent</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div>
-                <Label htmlFor="agent-name">Agent Name *</Label>
+            <div className="space-y-5 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="agent-name" className="text-sm font-medium">Agent Name *</Label>
                 <Input
                   id="agent-name"
                   value={newAgent.name}
                   onChange={(e) => setNewAgent({ ...newAgent, name: e.target.value })}
                   placeholder="Sales Assistant"
+                  className="w-full"
                 />
               </div>
-              <div>
-                <Label htmlFor="agent-description">Description *</Label>
+              <div className="space-y-2">
+                <Label htmlFor="agent-description" className="text-sm font-medium">Description *</Label>
                 <Input
                   id="agent-description"
                   value={newAgent.description}
                   onChange={(e) => setNewAgent({ ...newAgent, description: e.target.value })}
                   placeholder="Handles inbound sales inquiries"
+                  className="w-full"
                 />
               </div>
-              <div>
-                <Label htmlFor="agent-status">Initial Status</Label>
+              <div className="space-y-2">
+                <Label htmlFor="agent-status" className="text-sm font-medium">Initial Status</Label>
                 <select
                   id="agent-status"
                   value={newAgent.status}
                   onChange={(e) => setNewAgent({ ...newAgent, status: e.target.value as any })}
-                  className="w-full px-4 py-2 bg-white border border-border rounded-lg"
+                  className="flex h-10 w-full rounded-md border border-input bg-white px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <option value="inactive">Inactive</option>
                   <option value="active">Active</option>
                 </select>
               </div>
-              <Button onClick={handleCreateAgent} className="w-full" disabled={createAgent.isPending}>
-                {createAgent.isPending ? "Creating..." : "Create Agent"}
-              </Button>
+              <div className="pt-2">
+                <Button onClick={handleCreateAgent} className="w-full" disabled={createAgent.isPending}>
+                  {createAgent.isPending ? "Creating..." : "Create Agent"}
+                </Button>
+              </div>
             </div>
           </DialogContent>
         </Dialog>

@@ -11,14 +11,14 @@ interface StatsCardProps {
 
 export function StatsCard({ title, value, change, changeType = "neutral", icon: Icon }: StatsCardProps) {
   return (
-    <div className="glass-card rounded-xl p-6 animate-fade-in">
-      <div className="flex items-start justify-between">
-        <div className="space-y-2">
-          <p className="text-sm text-muted-foreground">{title}</p>
-          <p className="text-3xl font-semibold text-foreground">{value}</p>
+    <div className="glass-card rounded-xl p-4 sm:p-5 md:p-6 animate-fade-in">
+      <div className="flex items-start justify-between gap-3">
+        <div className="space-y-1.5 sm:space-y-2 flex-1 min-w-0">
+          <p className="text-xs sm:text-sm text-muted-foreground truncate">{title}</p>
+          <p className="text-2xl sm:text-3xl font-semibold text-foreground">{value}</p>
           {change && (
             <p className={cn(
-              "text-sm font-medium",
+              "text-xs sm:text-sm font-medium truncate",
               changeType === "positive" && "text-emerald-400",
               changeType === "negative" && "text-red-400",
               changeType === "neutral" && "text-muted-foreground"
@@ -27,8 +27,8 @@ export function StatsCard({ title, value, change, changeType = "neutral", icon: 
             </p>
           )}
         </div>
-        <div className="h-12 w-12 rounded-full border-2 border-primary/30 flex items-center justify-center">
-          <Icon className="h-6 w-6 text-primary" />
+        <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full border-2 border-primary/30 flex items-center justify-center flex-shrink-0">
+          <Icon className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
         </div>
       </div>
     </div>
