@@ -1,6 +1,72 @@
-import { Phone, Mic, Volume2 } from "lucide-react";
+import { Phone, Mic, Volume2, MicOff } from "lucide-react";
+import { useLiveCall } from "@/hooks/useDashboard";
+import { useState } from "react";
+import { apiService } from "@/lib/api/api";
+import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 
 export function LiveCallWidget() {
+  const { data: liveCall, isLoading } = useLiveCall();
+  const queryClient = useQueryClient();
+  const [isMuted, setIsMuted] = useState(false);
+  const [volume, setVolume] = useState(100);
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const handleMute = async () => {
+    if (!liveCall) return;
+    try {
+      await apiService.toggleCallMute(liveCall.id, !isMuted);
+      setIsMuted(!isMuted);
+      toast.success(isMuted ? "Microphone unmuted" : "Microphone muted");
+    } catch (error) {
+      toast.error("Failed to toggle mute");
+    }
+  };
+
+  const handleEndCall = async () => {
+    if (!liveCall) return;
+    if (confirm("Are you sure you want to end this call?")) {
+      try {
+        await apiService.endCall(liveCall.id);
+        queryClient.invalidateQueries({ queryKey: ["live-call"] });
+        toast.success("Call ended");
+      } catch (error) {
+        toast.error("Failed to end call");
+      }
+    }
+  };
+
+  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setVolume(Number(e.target.value));
+  };
+
+  if (isLoading) {
+    return (
+      <div className="glass-card rounded-xl p-5 border-primary/30">
+        <div className="animate-pulse space-y-4">
+          <div className="h-4 bg-secondary rounded w-1/2" />
+          <div className="h-20 bg-secondary rounded" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!liveCall) {
+    return (
+      <div className="glass-card rounded-xl p-5 border-border">
+        <div className="text-center py-8">
+          <Phone className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
+          <p className="text-muted-foreground">No active calls</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="glass-card rounded-xl p-5 border-primary/30">
       <div className="flex items-center justify-between mb-4">
@@ -17,14 +83,14 @@ export function LiveCallWidget() {
             <Phone className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <p className="font-medium text-foreground">Jennifer Adams</p>
-            <p className="text-sm text-muted-foreground">+61 412 345 678</p>
+            <p className="font-medium text-foreground">{liveCall.contact}</p>
+            <p className="text-sm text-muted-foreground">{liveCall.phone}</p>
           </div>
         </div>
 
         <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">Agent: Sales Assistant</span>
-          <span className="text-primary font-mono">03:24</span>
+          <span className="text-muted-foreground">Agent: {liveCall.agent}</span>
+          <span className="text-primary font-mono">{formatTime(liveCall.duration)}</span>
         </div>
       </div>
 
@@ -43,15 +109,43 @@ export function LiveCallWidget() {
       </div>
 
       <div className="flex items-center justify-center gap-4">
-        <button className="h-10 w-10 rounded-full bg-secondary border border-border flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary/50 transition-all">
-          <Mic className="h-5 w-5" />
+        <button
+          onClick={handleMute}
+          className={`h-10 w-10 rounded-full border flex items-center justify-center transition-all ${
+            isMuted
+              ? "bg-destructive/20 border-destructive text-destructive"
+              : "bg-secondary border-border text-muted-foreground hover:text-primary hover:border-primary/50"
+          }`}
+          title={isMuted ? "Unmute" : "Mute"}
+        >
+          {isMuted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
         </button>
-        <button className="h-12 w-12 rounded-full bg-destructive flex items-center justify-center text-destructive-foreground hover:bg-destructive/90 transition-all">
+        <button
+          onClick={handleEndCall}
+          className="h-12 w-12 rounded-full bg-destructive flex items-center justify-center text-destructive-foreground hover:bg-destructive/90 transition-all"
+          title="End Call"
+        >
           <Phone className="h-5 w-5" />
         </button>
-        <button className="h-10 w-10 rounded-full bg-secondary border border-border flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary/50 transition-all">
-          <Volume2 className="h-5 w-5" />
-        </button>
+        <div className="relative group">
+          <button className="h-10 w-10 rounded-full bg-secondary border border-border flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary/50 transition-all">
+            <Volume2 className="h-5 w-5" />
+          </button>
+          <div className="absolute right-0 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="bg-card border border-border rounded-lg p-2 shadow-lg">
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={volume}
+                onChange={handleVolumeChange}
+                className="w-24 h-2 bg-secondary rounded-lg appearance-none cursor-pointer accent-primary"
+                orient="vertical"
+                style={{ writingMode: "vertical-lr" }}
+              />
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -3,30 +3,11 @@ import { Header } from "@/components/dashboard/Header";
 import { Button } from "@/components/ui/button";
 import { Phone, PhoneIncoming, PhoneOutgoing, PhoneMissed, Download, Filter, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-interface Call {
-  id: string;
-  contact: string;
-  phone: string;
-  agent: string;
-  type: "inbound" | "outbound" | "missed";
-  duration: string;
-  date: string;
-  time: string;
-  status: "completed" | "missed" | "voicemail";
-  recording: boolean;
-}
-
-const calls: Call[] = [
-  { id: "1", contact: "John Smith", phone: "+1 (555) 123-4567", agent: "Sales Assistant", type: "inbound", duration: "4:32", date: "Dec 2, 2025", time: "10:24 AM", status: "completed", recording: true },
-  { id: "2", contact: "Emma Wilson", phone: "+1 (555) 234-5678", agent: "Support Bot", type: "outbound", duration: "2:15", date: "Dec 2, 2025", time: "10:09 AM", status: "completed", recording: true },
-  { id: "3", contact: "Michael Brown", phone: "+1 (555) 345-6789", agent: "Booking Agent", type: "missed", duration: "-", date: "Dec 2, 2025", time: "9:52 AM", status: "missed", recording: false },
-  { id: "4", contact: "Sarah Davis", phone: "+1 (555) 456-7890", agent: "Sales Assistant", type: "inbound", duration: "6:48", date: "Dec 2, 2025", time: "9:30 AM", status: "completed", recording: true },
-  { id: "5", contact: "James Miller", phone: "+1 (555) 567-8901", agent: "Support Bot", type: "outbound", duration: "1:23", date: "Dec 2, 2025", time: "9:15 AM", status: "completed", recording: true },
-  { id: "6", contact: "Lisa Anderson", phone: "+1 (555) 678-9012", agent: "Lead Qualifier", type: "inbound", duration: "3:45", date: "Dec 1, 2025", time: "4:30 PM", status: "completed", recording: true },
-  { id: "7", contact: "Robert Taylor", phone: "+1 (555) 789-0123", agent: "Booking Agent", type: "outbound", duration: "-", date: "Dec 1, 2025", time: "3:45 PM", status: "voicemail", recording: true },
-  { id: "8", contact: "Jennifer White", phone: "+1 (555) 890-1234", agent: "Sales Assistant", type: "inbound", duration: "8:12", date: "Dec 1, 2025", time: "2:20 PM", status: "completed", recording: true },
-];
+import { useCalls } from "@/hooks/useCalls";
+import { useState } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
+import { apiService } from "@/lib/api/api";
 
 const typeIcons = {
   inbound: PhoneIncoming,
@@ -47,6 +28,36 @@ const statusBadge = {
 };
 
 const CallHistory = () => {
+  const [search, setSearch] = useState("");
+  const [selectedAgent, setSelectedAgent] = useState<string | undefined>();
+  const [selectedType, setSelectedType] = useState<string | undefined>();
+
+  const { data: calls, isLoading } = useCalls({
+    search: search || undefined,
+    agent: selectedAgent,
+    type: selectedType as "inbound" | "outbound" | "missed" | undefined,
+  });
+
+  const handleExport = async () => {
+    try {
+      const { apiService } = await import("@/lib/api/api");
+      const blob = await apiService.exportCalls("csv");
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `calls-${new Date().toISOString().split("T")[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success("Calls exported successfully");
+    } catch (error) {
+      toast.error("Failed to export calls");
+    }
+  };
+
+  const uniqueAgents = Array.from(new Set(calls?.map(c => c.agent) || []));
+
   return (
     <div className="min-h-screen bg-background">
       <Sidebar />
@@ -60,26 +71,66 @@ const CallHistory = () => {
               <h1 className="text-2xl font-bold text-foreground">Call History</h1>
               <p className="text-muted-foreground">View and manage all call records</p>
             </div>
-            <Button variant="outline">
+            <Button variant="outline" onClick={handleExport}>
               <Download className="h-4 w-4 mr-2" />
               Export
             </Button>
           </div>
 
+          {/* Search */}
+          <div className="flex items-center gap-4">
+            <div className="relative flex-1 max-w-md">
+              <input
+                type="text"
+                placeholder="Search calls..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 bg-white border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+              />
+            </div>
+          </div>
+
           {/* Filters */}
           <div className="flex items-center gap-4">
-            <Button variant="outline" size="sm">
-              <Calendar className="h-4 w-4 mr-2" />
-              Date Range
-            </Button>
-            <Button variant="outline" size="sm">
+            <Button 
+              variant={selectedAgent ? "default" : "outline"} 
+              size="sm"
+              onClick={() => setSelectedAgent(selectedAgent ? undefined : undefined)}
+            >
               <Filter className="h-4 w-4 mr-2" />
               Filter by Agent
             </Button>
-            <Button variant="outline" size="sm">
+            {selectedAgent && (
+              <select
+                value={selectedAgent}
+                onChange={(e) => setSelectedAgent(e.target.value || undefined)}
+                className="px-3 py-1.5 bg-white border border-border rounded-lg text-sm"
+              >
+                <option value="">All Agents</option>
+                {uniqueAgents.map(agent => (
+                  <option key={agent} value={agent}>{agent}</option>
+                ))}
+              </select>
+            )}
+            <Button 
+              variant={selectedType ? "default" : "outline"} 
+              size="sm"
+            >
               <Phone className="h-4 w-4 mr-2" />
               Call Type
             </Button>
+            {selectedType && (
+              <select
+                value={selectedType}
+                onChange={(e) => setSelectedType(e.target.value || undefined)}
+                className="px-3 py-1.5 bg-white border border-border rounded-lg text-sm"
+              >
+                <option value="">All Types</option>
+                <option value="inbound">Inbound</option>
+                <option value="outbound">Outbound</option>
+                <option value="missed">Missed</option>
+              </select>
+            )}
           </div>
 
           {/* Calls Table */}
@@ -98,45 +149,79 @@ const CallHistory = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {calls.map((call) => {
-                    const Icon = typeIcons[call.type];
-                    return (
-                      <tr key={call.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
-                        <td className="px-5 py-4">
-                          <div>
-                            <span className="font-medium text-foreground">{call.contact}</span>
-                            <p className="text-sm text-muted-foreground">{call.phone}</p>
-                          </div>
-                        </td>
-                        <td className="px-5 py-4 text-muted-foreground">{call.agent}</td>
-                        <td className="px-5 py-4">
-                          <div className="flex items-center gap-2">
-                            <Icon className={cn("h-4 w-4", typeColors[call.type])} />
-                            <span className="capitalize text-muted-foreground">{call.type}</span>
-                          </div>
-                        </td>
-                        <td className="px-5 py-4 text-muted-foreground">{call.duration}</td>
-                        <td className="px-5 py-4">
-                          <div>
-                            <span className="text-foreground">{call.date}</span>
-                            <p className="text-sm text-muted-foreground">{call.time}</p>
-                          </div>
-                        </td>
-                        <td className="px-5 py-4">
-                          <span className={cn("px-2 py-1 rounded-full text-xs font-medium", statusBadge[call.status])}>
-                            {call.status}
-                          </span>
-                        </td>
-                        <td className="px-5 py-4">
-                          {call.recording && (
-                            <Button variant="ghost" size="sm" className="text-primary hover:text-primary/80">
-                              Play Recording
-                            </Button>
-                          )}
-                        </td>
+                  {isLoading ? (
+                    Array.from({ length: 5 }).map((_, i) => (
+                      <tr key={i} className="border-b border-border/50">
+                        <td className="px-5 py-4"><Skeleton className="h-4 w-32" /></td>
+                        <td className="px-5 py-4"><Skeleton className="h-4 w-24" /></td>
+                        <td className="px-5 py-4"><Skeleton className="h-4 w-16" /></td>
+                        <td className="px-5 py-4"><Skeleton className="h-4 w-12" /></td>
+                        <td className="px-5 py-4"><Skeleton className="h-4 w-24" /></td>
+                        <td className="px-5 py-4"><Skeleton className="h-4 w-16" /></td>
+                        <td className="px-5 py-4"><Skeleton className="h-4 w-20" /></td>
                       </tr>
-                    );
-                  })}
+                    ))
+                  ) : calls && calls.length > 0 ? (
+                    calls.map((call) => {
+                      const Icon = typeIcons[call.type];
+                      return (
+                        <tr key={call.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
+                          <td className="px-5 py-4">
+                            <div>
+                              <span className="font-medium text-foreground">{call.contact}</span>
+                              <p className="text-sm text-muted-foreground">{call.phone}</p>
+                            </div>
+                          </td>
+                          <td className="px-5 py-4 text-muted-foreground">{call.agent}</td>
+                          <td className="px-5 py-4">
+                            <div className="flex items-center gap-2">
+                              <Icon className={cn("h-4 w-4", typeColors[call.type])} />
+                              <span className="capitalize text-muted-foreground">{call.type}</span>
+                            </div>
+                          </td>
+                          <td className="px-5 py-4 text-muted-foreground">{call.duration}</td>
+                          <td className="px-5 py-4">
+                            <div>
+                              <span className="text-foreground">{call.date}</span>
+                              <p className="text-sm text-muted-foreground">{call.time}</p>
+                            </div>
+                          </td>
+                          <td className="px-5 py-4">
+                            <span className={cn("px-2 py-1 rounded-full text-xs font-medium", statusBadge[call.status])}>
+                              {call.status}
+                            </span>
+                          </td>
+                          <td className="px-5 py-4">
+                            {call.recording && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-primary hover:text-primary/80"
+                                onClick={async () => {
+                                  try {
+                                    const recordingUrl = await apiService.playRecording(call.id);
+                                    toast.success("Opening recording...");
+                                    // In real app, this would open an audio player
+                                    window.open(recordingUrl, "_blank");
+                                  } catch (error) {
+                                    toast.error("Failed to load recording");
+                                  }
+                                }}
+                              >
+                                Play Recording
+                              </Button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan={7} className="px-5 py-8 text-center text-muted-foreground">
+                        No calls found
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>

@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { User, Bell, Shield, CreditCard, Globe, Mic, Save } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { apiService } from "@/lib/api/api";
+import { toast } from "sonner";
 
 const tabs = [
   { id: "profile", label: "Profile", icon: User },
@@ -16,6 +18,112 @@ const tabs = [
 
 const Settings = () => {
   const [activeTab, setActiveTab] = useState("profile");
+  const [avatar, setAvatar] = useState<string | null>(() => {
+    // Load avatar from localStorage if available
+    const savedAvatar = localStorage.getItem("userAvatar");
+    return savedAvatar || null;
+  });
+  const [profileData, setProfileData] = useState({
+    firstName: "Evolved",
+    lastName: "Sound",
+    email: "admin@evolvedsound.com",
+    company: "Evolved Sound",
+    timezone: "UTC-8 (Pacific Time)",
+  });
+  const [voiceSettings, setVoiceSettings] = useState({
+    voiceModel: "ElevenLabs - Aria",
+    speechSpeed: 1,
+    apiKey: "sk-xxxxxxxxxxxxxxxx",
+  });
+  const [notifications, setNotifications] = useState({
+    callAlerts: true,
+    dailySummary: true,
+    agentStatus: true,
+    missedCalls: false,
+    weeklyReports: false,
+  });
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSaveProfile = async () => {
+    setIsSaving(true);
+    try {
+      await apiService.updateProfile({
+        firstName: profileData.firstName,
+        lastName: profileData.lastName,
+        email: profileData.email,
+        company: profileData.company,
+        timezone: profileData.timezone,
+      });
+      toast.success("Profile updated successfully");
+    } catch (error) {
+      toast.error("Failed to update profile");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSaveVoiceSettings = async () => {
+    setIsSaving(true);
+    try {
+      await apiService.updateVoiceSettings({
+        voiceModel: voiceSettings.voiceModel,
+        speechSpeed: voiceSettings.speechSpeed,
+        apiKey: voiceSettings.apiKey,
+      });
+      toast.success("Voice settings updated successfully");
+    } catch (error) {
+      toast.error("Failed to update voice settings");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleNotificationToggle = async (key: string, value: boolean) => {
+    const newNotifications = { ...notifications, [key]: value };
+    setNotifications(newNotifications);
+    try {
+      await apiService.updateNotificationSettings(newNotifications);
+      toast.success("Notification settings updated");
+    } catch (error) {
+      toast.error("Failed to update notification settings");
+    }
+  };
+
+  const handleAvatarChange = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) {
+        if (file.size > 2 * 1024 * 1024) {
+          toast.error("File size must be less than 2MB");
+          return;
+        }
+        
+        // Validate file type
+        if (!file.type.startsWith("image/")) {
+          toast.error("Please select an image file");
+          return;
+        }
+
+        // Read file and convert to data URL
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const imageUrl = event.target?.result as string;
+          setAvatar(imageUrl);
+          // Save to localStorage for persistence
+          localStorage.setItem("userAvatar", imageUrl);
+          toast.success("Avatar updated successfully");
+        };
+        reader.onerror = () => {
+          toast.error("Failed to read image file");
+        };
+        reader.readAsDataURL(file);
+      }
+    };
+    input.click();
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -57,11 +165,19 @@ const Settings = () => {
                   <h2 className="text-lg font-semibold text-foreground">Profile Settings</h2>
                   
                   <div className="flex items-center gap-6">
-                    <div className="h-20 w-20 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center text-white text-2xl font-semibold">
-                      ES
+                    <div className="relative h-20 w-20 rounded-full overflow-hidden bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center text-white text-2xl font-semibold border-2 border-border">
+                      {avatar ? (
+                        <img 
+                          src={avatar} 
+                          alt="Avatar" 
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span>ES</span>
+                      )}
                     </div>
                     <div>
-                      <Button variant="outline" size="sm">Change Avatar</Button>
+                      <Button variant="outline" size="sm" onClick={handleAvatarChange}>Change Avatar</Button>
                       <p className="text-sm text-muted-foreground mt-1">JPG, PNG or GIF. Max 2MB.</p>
                     </div>
                   </div>
@@ -71,7 +187,8 @@ const Settings = () => {
                       <label className="block text-sm font-medium text-foreground mb-2">First Name</label>
                       <input
                         type="text"
-                        defaultValue="Evolved"
+                        value={profileData.firstName}
+                        onChange={(e) => setProfileData({ ...profileData, firstName: e.target.value })}
                         className="w-full px-4 py-2 bg-white border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                       />
                     </div>
@@ -79,7 +196,8 @@ const Settings = () => {
                       <label className="block text-sm font-medium text-foreground mb-2">Last Name</label>
                       <input
                         type="text"
-                        defaultValue="Sound"
+                        value={profileData.lastName}
+                        onChange={(e) => setProfileData({ ...profileData, lastName: e.target.value })}
                         className="w-full px-4 py-2 bg-white border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                       />
                     </div>
@@ -87,7 +205,8 @@ const Settings = () => {
                       <label className="block text-sm font-medium text-foreground mb-2">Email</label>
                       <input
                         type="email"
-                        defaultValue="admin@evolvedsound.com"
+                        value={profileData.email}
+                        onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
                         className="w-full px-4 py-2 bg-white border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                       />
                     </div>
@@ -95,7 +214,8 @@ const Settings = () => {
                       <label className="block text-sm font-medium text-foreground mb-2">Company</label>
                       <input
                         type="text"
-                        defaultValue="Evolved Sound"
+                        value={profileData.company}
+                        onChange={(e) => setProfileData({ ...profileData, company: e.target.value })}
                         className="w-full px-4 py-2 bg-white border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                       />
                     </div>
@@ -103,7 +223,11 @@ const Settings = () => {
 
                   <div>
                     <label className="block text-sm font-medium text-foreground mb-2">Timezone</label>
-                    <select className="w-full px-4 py-2 bg-white border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50">
+                    <select
+                      value={profileData.timezone}
+                      onChange={(e) => setProfileData({ ...profileData, timezone: e.target.value })}
+                      className="w-full px-4 py-2 bg-white border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    >
                       <option>UTC-8 (Pacific Time)</option>
                       <option>UTC-5 (Eastern Time)</option>
                       <option>UTC+0 (London)</option>
@@ -111,9 +235,9 @@ const Settings = () => {
                     </select>
                   </div>
 
-                  <Button>
+                  <Button onClick={handleSaveProfile} disabled={isSaving}>
                     <Save className="h-4 w-4 mr-2" />
-                    Save Changes
+                    {isSaving ? "Saving..." : "Save Changes"}
                   </Button>
                 </div>
               )}
@@ -129,18 +253,26 @@ const Settings = () => {
                       { title: "Agent Status", description: "Notify when agent status changes" },
                       { title: "Missed Calls", description: "Alert for any missed calls" },
                       { title: "Weekly Reports", description: "Receive weekly analytics reports" },
-                    ].map((item, index) => (
-                      <div key={index} className="flex items-center justify-between py-3 border-b border-border">
-                        <div>
-                          <h3 className="font-medium text-foreground">{item.title}</h3>
-                          <p className="text-sm text-muted-foreground">{item.description}</p>
+                    ].map((item, index) => {
+                      const key = item.title.toLowerCase().replace(/\s+/g, '') as keyof typeof notifications;
+                      return (
+                        <div key={index} className="flex items-center justify-between py-3 border-b border-border">
+                          <div>
+                            <h3 className="font-medium text-foreground">{item.title}</h3>
+                            <p className="text-sm text-muted-foreground">{item.description}</p>
+                          </div>
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={notifications[key] || false}
+                              onChange={(e) => handleNotificationToggle(key, e.target.checked)}
+                              className="sr-only peer"
+                            />
+                            <div className="w-11 h-6 bg-secondary rounded-full peer peer-checked:bg-primary peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
+                          </label>
                         </div>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                          <input type="checkbox" defaultChecked={index < 3} className="sr-only peer" />
-                          <div className="w-11 h-6 bg-secondary rounded-full peer peer-checked:bg-primary peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
-                        </label>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -151,7 +283,11 @@ const Settings = () => {
                   
                   <div>
                     <label className="block text-sm font-medium text-foreground mb-2">Default Voice Model</label>
-                    <select className="w-full px-4 py-2 bg-white border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50">
+                    <select
+                      value={voiceSettings.voiceModel}
+                      onChange={(e) => setVoiceSettings({ ...voiceSettings, voiceModel: e.target.value })}
+                      className="w-full px-4 py-2 bg-white border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    >
                       <option>ElevenLabs - Aria</option>
                       <option>ElevenLabs - Roger</option>
                       <option>ElevenLabs - Sarah</option>
@@ -166,12 +302,13 @@ const Settings = () => {
                       min="0.5"
                       max="2"
                       step="0.1"
-                      defaultValue="1"
+                      value={voiceSettings.speechSpeed}
+                      onChange={(e) => setVoiceSettings({ ...voiceSettings, speechSpeed: Number(e.target.value) })}
                       className="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer accent-primary"
                     />
                     <div className="flex justify-between text-sm text-muted-foreground mt-1">
                       <span>Slower</span>
-                      <span>Normal</span>
+                      <span>Normal ({voiceSettings.speechSpeed}x)</span>
                       <span>Faster</span>
                     </div>
                   </div>
@@ -180,14 +317,15 @@ const Settings = () => {
                     <label className="block text-sm font-medium text-foreground mb-2">API Key</label>
                     <input
                       type="password"
-                      defaultValue="sk-xxxxxxxxxxxxxxxx"
-                      className="w-full px-4 py-2 bg-secondary border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                      value={voiceSettings.apiKey}
+                      onChange={(e) => setVoiceSettings({ ...voiceSettings, apiKey: e.target.value })}
+                      className="w-full px-4 py-2 bg-white border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                     />
                   </div>
 
-                  <Button>
+                  <Button onClick={handleSaveVoiceSettings} disabled={isSaving}>
                     <Save className="h-4 w-4 mr-2" />
-                    Save Voice Settings
+                    {isSaving ? "Saving..." : "Save Voice Settings"}
                   </Button>
                 </div>
               )}

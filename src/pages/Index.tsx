@@ -5,22 +5,22 @@ import { VoiceAgentCard } from "@/components/dashboard/VoiceAgentCard";
 import { RecentCallsTable } from "@/components/dashboard/RecentCallsTable";
 import { LiveCallWidget } from "@/components/dashboard/LiveCallWidget";
 import { Phone, Mic, Clock, TrendingUp } from "lucide-react";
-
-const stats = [
-  { title: "Total Calls Today", value: "247", change: "+12% from yesterday", changeType: "positive" as const, icon: Phone },
-  { title: "Active Agents", value: "8", change: "3 currently on call", changeType: "neutral" as const, icon: Mic },
-  { title: "Avg. Call Duration", value: "4:32", change: "-8% from last week", changeType: "positive" as const, icon: Clock },
-  { title: "Success Rate", value: "94.2%", change: "+2.1% this month", changeType: "positive" as const, icon: TrendingUp },
-];
-
-const agents = [
-  { name: "Sales Assistant", description: "Handles inbound sales inquiries", status: "busy" as const, calls: 156, avgDuration: "5:24" },
-  { name: "Support Bot", description: "24/7 customer support", status: "active" as const, calls: 89, avgDuration: "3:12" },
-  { name: "Booking Agent", description: "Appointment scheduling", status: "active" as const, calls: 45, avgDuration: "2:48" },
-  { name: "Survey Caller", description: "Customer feedback collection", status: "inactive" as const, calls: 12, avgDuration: "1:56" },
-];
+import { useDashboardStats, useVoiceAgents } from "@/hooks/useDashboard";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useNavigate } from "react-router-dom";
 
 const Index = () => {
+  const navigate = useNavigate();
+  const { data: stats, isLoading: statsLoading } = useDashboardStats();
+  const { data: agents, isLoading: agentsLoading } = useVoiceAgents();
+
+  const statsData = stats ? [
+    { title: "Total Calls Today", value: stats.totalCallsToday.toString(), change: `${stats.callsChange > 0 ? '+' : ''}${stats.callsChange}% from yesterday`, changeType: (stats.callsChange > 0 ? "positive" : stats.callsChange < 0 ? "negative" : "neutral") as const, icon: Phone },
+    { title: "Active Agents", value: stats.activeAgents.toString(), change: "3 currently on call", changeType: "neutral" as const, icon: Mic },
+    { title: "Avg. Call Duration", value: stats.avgCallDuration, change: `${stats.durationChange > 0 ? '+' : ''}${stats.durationChange}% from last week`, changeType: (stats.durationChange > 0 ? "positive" : "negative") as const, icon: Clock },
+    { title: "Success Rate", value: `${stats.successRate}%`, change: `${stats.successRateChange > 0 ? '+' : ''}${stats.successRateChange}% this month`, changeType: (stats.successRateChange > 0 ? "positive" : "negative") as const, icon: TrendingUp },
+  ] : [];
+
   return (
     <div className="min-h-screen bg-background">
       <Sidebar />
@@ -37,11 +37,17 @@ const Index = () => {
 
           {/* Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {stats.map((stat, index) => (
-              <div key={stat.title} style={{ animationDelay: `${index * 0.1}s` }}>
-                <StatsCard {...stat} />
-              </div>
-            ))}
+            {statsLoading ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-32 rounded-xl" />
+              ))
+            ) : (
+              statsData.map((stat, index) => (
+                <div key={stat.title} style={{ animationDelay: `${index * 0.1}s` }}>
+                  <StatsCard {...stat} />
+                </div>
+              ))
+            )}
           </div>
 
           {/* Main Content Grid */}
@@ -50,16 +56,32 @@ const Index = () => {
             <div className="lg:col-span-2 space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold text-foreground">Voice Agents</h2>
-                <button className="text-sm text-primary hover:text-primary/80 transition-colors">
+                <button 
+                  onClick={() => navigate("/voice-agents")}
+                  className="text-sm text-primary hover:text-primary/80 transition-colors"
+                >
                   View All →
                 </button>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {agents.map((agent, index) => (
-                  <div key={agent.name} style={{ animationDelay: `${index * 0.15}s` }}>
-                    <VoiceAgentCard {...agent} />
-                  </div>
-                ))}
+                {agentsLoading ? (
+                  Array.from({ length: 4 }).map((_, i) => (
+                    <Skeleton key={i} className="h-32 rounded-xl" />
+                  ))
+                ) : (
+                  agents?.slice(0, 4).map((agent, index) => (
+                    <div key={agent.id} style={{ animationDelay: `${index * 0.15}s` }}>
+                      <VoiceAgentCard 
+                        id={agent.id}
+                        name={agent.name}
+                        description={agent.description}
+                        status={agent.status}
+                        calls={agent.calls}
+                        avgDuration={agent.avgDuration}
+                      />
+                    </div>
+                  ))
+                )}
               </div>
             </div>
 
