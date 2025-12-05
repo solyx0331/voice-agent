@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 
 export function Header() {
   return (
-    <header className="h-16 border-b border-border bg-card/50 backdrop-blur-sm flex items-center justify-between px-6">
+    <header className="h-16 border-b border-border bg-white/80 backdrop-blur-sm flex items-center justify-between px-6">
       <div className="flex items-center gap-4 flex-1">
         <div className="relative max-w-md w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
