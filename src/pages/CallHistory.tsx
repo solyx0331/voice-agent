@@ -1,7 +1,7 @@
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { Header } from "@/components/dashboard/Header";
 import { Button } from "@/components/ui/button";
-import { Phone, PhoneIncoming, PhoneOutgoing, PhoneMissed, Download, Filter, Calendar, X } from "lucide-react";
+import { Phone, PhoneIncoming, PhoneOutgoing, PhoneMissed, Download, Filter, Calendar, X, Play, Pause } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCalls } from "@/hooks/useCalls";
 import { useState } from "react";
@@ -35,6 +35,7 @@ const CallHistory = () => {
   const [selectedType, setSelectedType] = useState<string | undefined>();
   const [isAgentFilterOpen, setIsAgentFilterOpen] = useState(false);
   const [isTypeFilterOpen, setIsTypeFilterOpen] = useState(false);
+  const [playingRecordingId, setPlayingRecordingId] = useState<string | null>(null);
 
   const { data: calls, isLoading } = useCalls({
     search: search || undefined,
@@ -66,14 +67,14 @@ const CallHistory = () => {
     <div className="min-h-screen bg-background">
       <Sidebar />
       
-      <main className="ml-64">
+      <main className="ml-0 sm:ml-16 md:ml-64">
         <Header />
         
-        <div className="p-6 space-y-6">
-          <div className="flex items-center justify-between">
+        <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-5 md:space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-foreground">Call History</h1>
-              <p className="text-muted-foreground">View and manage all call records</p>
+              <h1 className="text-xl sm:text-2xl font-bold text-foreground">Call History</h1>
+              <p className="text-sm sm:text-base text-muted-foreground">View and manage all call records</p>
             </div>
             <Button variant="outline" onClick={handleExport}>
               <Download className="h-4 w-4 mr-2" />
@@ -89,7 +90,7 @@ const CallHistory = () => {
                 placeholder="Search calls..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-white border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                className="w-full pl-4 pr-4 py-2 bg-white border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
               />
             </div>
           </div>
@@ -275,82 +276,94 @@ const CallHistory = () => {
             </Popover>
           </div>
 
-          {/* Calls Table */}
-          <div className="glass-card rounded-xl overflow-hidden">
+          {/* Calls Table - Desktop */}
+          <div className="glass-card rounded-xl overflow-hidden hidden md:block">
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full min-w-full">
                 <thead>
                   <tr className="border-b border-border">
-                    <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-5 py-3">Contact</th>
-                    <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-5 py-3">Agent</th>
-                    <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-5 py-3">Type</th>
-                    <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-5 py-3">Duration</th>
-                    <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-5 py-3">Date & Time</th>
-                    <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-5 py-3">Status</th>
-                    <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-5 py-3">Actions</th>
+                    <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 lg:px-5 py-3">Contact</th>
+                    <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 lg:px-5 py-3">Agent</th>
+                    <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 lg:px-5 py-3">Type</th>
+                    <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 lg:px-5 py-3">Duration</th>
+                    <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 lg:px-5 py-3">Date & Time</th>
+                    <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 lg:px-5 py-3">Status</th>
+                    <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 lg:px-5 py-3">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {isLoading ? (
                     Array.from({ length: 5 }).map((_, i) => (
                       <tr key={i} className="border-b border-border/50">
-                        <td className="px-5 py-4"><Skeleton className="h-4 w-32" /></td>
-                        <td className="px-5 py-4"><Skeleton className="h-4 w-24" /></td>
-                        <td className="px-5 py-4"><Skeleton className="h-4 w-16" /></td>
-                        <td className="px-5 py-4"><Skeleton className="h-4 w-12" /></td>
-                        <td className="px-5 py-4"><Skeleton className="h-4 w-24" /></td>
-                        <td className="px-5 py-4"><Skeleton className="h-4 w-16" /></td>
-                        <td className="px-5 py-4"><Skeleton className="h-4 w-20" /></td>
+                        <td className="px-4 lg:px-5 py-4"><Skeleton className="h-4 w-32" /></td>
+                        <td className="px-4 lg:px-5 py-4"><Skeleton className="h-4 w-24" /></td>
+                        <td className="px-4 lg:px-5 py-4"><Skeleton className="h-4 w-16" /></td>
+                        <td className="px-4 lg:px-5 py-4"><Skeleton className="h-4 w-12" /></td>
+                        <td className="px-4 lg:px-5 py-4"><Skeleton className="h-4 w-24" /></td>
+                        <td className="px-4 lg:px-5 py-4"><Skeleton className="h-4 w-16" /></td>
+                        <td className="px-4 lg:px-5 py-4"><Skeleton className="h-4 w-20" /></td>
                       </tr>
                     ))
                   ) : calls && calls.length > 0 ? (
                     calls.map((call) => {
                       const Icon = typeIcons[call.type];
+                      const isPlaying = playingRecordingId === call.id;
                       return (
                         <tr key={call.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
-                          <td className="px-5 py-4">
+                          <td className="px-4 lg:px-5 py-4">
                             <div>
                               <span className="font-medium text-foreground">{call.contact}</span>
                               <p className="text-sm text-muted-foreground">{call.phone}</p>
                             </div>
                           </td>
-                          <td className="px-5 py-4 text-muted-foreground">{call.agent}</td>
-                          <td className="px-5 py-4">
+                          <td className="px-4 lg:px-5 py-4 text-muted-foreground">{call.agent}</td>
+                          <td className="px-4 lg:px-5 py-4">
                             <div className="flex items-center gap-2">
                               <Icon className={cn("h-4 w-4", typeColors[call.type])} />
                               <span className="capitalize text-muted-foreground">{call.type}</span>
                             </div>
                           </td>
-                          <td className="px-5 py-4 text-muted-foreground">{call.duration}</td>
-                          <td className="px-5 py-4">
+                          <td className="px-4 lg:px-5 py-4 text-muted-foreground">{call.duration}</td>
+                          <td className="px-4 lg:px-5 py-4">
                             <div>
                               <span className="text-foreground">{call.date}</span>
                               <p className="text-sm text-muted-foreground">{call.time}</p>
                             </div>
                           </td>
-                          <td className="px-5 py-4">
+                          <td className="px-4 lg:px-5 py-4">
                             <span className={cn("px-2 py-1 rounded-full text-xs font-medium", statusBadge[call.status])}>
                               {call.status}
                             </span>
                           </td>
-                          <td className="px-5 py-4">
+                          <td className="px-4 lg:px-5 py-4">
                             {call.recording && (
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="text-primary hover:text-primary/80"
+                                className="text-primary hover:text-primary/80 p-2"
                                 onClick={async () => {
-                                  try {
-                                    const recordingUrl = await apiService.playRecording(call.id);
-                                    toast.success("Opening recording...");
-                                    // In real app, this would open an audio player
-                                    window.open(recordingUrl, "_blank");
-                                  } catch (error) {
-                                    toast.error("Failed to load recording");
+                                  if (isPlaying) {
+                                    setPlayingRecordingId(null);
+                                    toast.info("Recording paused");
+                                  } else {
+                                    try {
+                                      setPlayingRecordingId(call.id);
+                                      const recordingUrl = await apiService.playRecording(call.id);
+                                      toast.success("Playing recording...");
+                                      // In real app, this would control an audio player
+                                      window.open(recordingUrl, "_blank");
+                                    } catch (error) {
+                                      setPlayingRecordingId(null);
+                                      toast.error("Failed to load recording");
+                                    }
                                   }
                                 }}
                               >
-                                Play Recording
+                                {isPlaying ? (
+                                  <Pause className="h-4 w-4" />
+                                ) : (
+                                  <Play className="h-4 w-4" />
+                                )}
                               </Button>
                             )}
                           </td>
@@ -367,6 +380,90 @@ const CallHistory = () => {
                 </tbody>
               </table>
             </div>
+          </div>
+
+          {/* Calls Cards - Mobile */}
+          <div className="md:hidden space-y-3">
+            {isLoading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-48 rounded-xl" />
+              ))
+            ) : calls && calls.length > 0 ? (
+              calls.map((call) => {
+                const Icon = typeIcons[call.type];
+                const isPlaying = playingRecordingId === call.id;
+                return (
+                  <div key={call.id} className="glass-card rounded-xl p-4 space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <h3 className="font-medium text-foreground">{call.contact}</h3>
+                        <p className="text-sm text-muted-foreground">{call.phone}</p>
+                      </div>
+                      {call.recording && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-primary hover:text-primary/80 p-2"
+                          onClick={async () => {
+                            if (isPlaying) {
+                              setPlayingRecordingId(null);
+                              toast.info("Recording paused");
+                            } else {
+                              try {
+                                setPlayingRecordingId(call.id);
+                                const recordingUrl = await apiService.playRecording(call.id);
+                                toast.success("Playing recording...");
+                                window.open(recordingUrl, "_blank");
+                              } catch (error) {
+                                setPlayingRecordingId(null);
+                                toast.error("Failed to load recording");
+                              }
+                            }
+                          }}
+                        >
+                          {isPlaying ? (
+                            <Pause className="h-4 w-4" />
+                          ) : (
+                            <Play className="h-4 w-4" />
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Agent</p>
+                        <p className="text-foreground">{call.agent}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Type</p>
+                        <div className="flex items-center gap-2">
+                          <Icon className={cn("h-4 w-4", typeColors[call.type])} />
+                          <span className="capitalize text-foreground">{call.type}</span>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Duration</p>
+                        <p className="text-foreground">{call.duration}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Status</p>
+                        <span className={cn("px-2 py-1 rounded-full text-xs font-medium inline-block", statusBadge[call.status])}>
+                          {call.status}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="pt-2 border-t border-border">
+                      <p className="text-xs text-muted-foreground mb-1">Date & Time</p>
+                      <p className="text-sm text-foreground">{call.date} • {call.time}</p>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="glass-card rounded-xl p-8 text-center text-muted-foreground">
+                No calls found
+              </div>
+            )}
           </div>
         </div>
       </main>
