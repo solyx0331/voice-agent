@@ -65,23 +65,23 @@ export function Header() {
   };
 
   return (
-    <header className="h-16 border-b border-border bg-white flex items-center justify-between px-6 shadow-sm">
-      <div className="flex items-center gap-4 flex-1">
+    <header className="h-14 sm:h-16 border-b border-border bg-white flex items-center justify-between px-3 sm:px-4 md:px-6 shadow-sm gap-2 sm:gap-4">
+      <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
         <Popover open={isSearchOpen} onOpenChange={setIsSearchOpen}>
           <PopoverTrigger asChild>
-            <div className="relative max-w-md w-full">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <div className="relative w-full max-w-xs sm:max-w-md">
+              <Search className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none z-10" />
               <input
                 type="text"
                 placeholder="Search agents, calls, contacts..."
                 value={searchQuery}
                 onChange={(e) => handleSearch(e.target.value)}
-                className="w-full h-10 pl-10 pr-4 rounded-lg bg-white border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                className="w-full h-9 sm:h-10 pl-8 sm:pl-10 pr-3 sm:pr-4 rounded-lg bg-white border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
               />
             </div>
           </PopoverTrigger>
           {searchResults && (
-            <PopoverContent className="w-[400px] p-0" align="start">
+            <PopoverContent className="w-[calc(100vw-2rem)] sm:w-[400px] max-w-[400px] p-0" align="start">
               <div className="max-h-96 overflow-y-auto">
                 {searchResults.agents.length > 0 && (
                   <div className="p-2">
@@ -134,15 +134,15 @@ export function Header() {
         </Popover>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 flex-shrink-0">
         <Dialog open={isAgentDialogOpen} onOpenChange={setIsAgentDialogOpen}>
           <DialogTrigger asChild>
-            <Button variant="default" size="sm" className="gap-2">
-              <Plus className="h-4 w-4" />
-              New Agent
+            <Button variant="default" size="sm" className="gap-1 sm:gap-2 h-9 sm:h-10 px-2 sm:px-3 md:px-4">
+              <Plus className="h-4 w-4 flex-shrink-0" />
+              <span className="hidden sm:inline">New Agent</span>
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="w-[calc(100vw-2rem)] sm:w-full max-w-md">
             <DialogHeader>
               <DialogTitle>Create New Voice Agent</DialogTitle>
             </DialogHeader>
@@ -186,12 +186,12 @@ export function Header() {
         
         <Popover>
           <PopoverTrigger asChild>
-            <button className="relative h-10 w-10 rounded-lg bg-secondary border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/50 transition-all">
-              <Bell className="h-5 w-5" />
-              <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-primary" />
+            <button className="relative h-9 w-9 sm:h-10 sm:w-10 rounded-lg bg-secondary border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/50 transition-all flex-shrink-0">
+              <Bell className="h-4 w-4 sm:h-5 sm:w-5" />
+              <span className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 h-2 w-2 rounded-full bg-primary" />
             </button>
           </PopoverTrigger>
-          <PopoverContent className="w-80" align="end">
+          <PopoverContent className="w-[calc(100vw-4rem)] sm:w-80 max-w-[320px] sm:max-w-none" align="end">
             <div className="space-y-2">
               <div className="font-semibold text-sm mb-2">Notifications</div>
               <div className="text-sm p-2 hover:bg-secondary rounded cursor-pointer">
@@ -212,7 +212,7 @@ export function Header() {
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="h-10 w-10 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center hover:bg-primary/30 transition-all cursor-pointer overflow-hidden">
+            <button className="h-9 w-9 sm:h-10 sm:w-10 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center hover:bg-primary/30 transition-all cursor-pointer overflow-hidden flex-shrink-0">
               {(() => {
                 const savedAvatar = localStorage.getItem("userAvatar");
                 return savedAvatar ? (
@@ -222,12 +222,12 @@ export function Header() {
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <span className="text-sm font-semibold text-primary">ES</span>
+                  <span className="text-xs sm:text-sm font-semibold text-primary">ES</span>
                 );
               })()}
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuContent align="end" className="w-56 sm:w-56">
             <DropdownMenuItem onClick={() => navigate("/settings")}>
               <User className="h-4 w-4 mr-2" />
               Profile
