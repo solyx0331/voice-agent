@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import logo from "@/assets/evolved-sound-logo.svg";
+import logo from "@/assets/logo.png";
 import { NavLink } from "react-router-dom";
 import { 
   LayoutDashboard, 
@@ -30,8 +30,10 @@ export function Sidebar() {
   return (
     <aside className="fixed left-0 top-0 h-screen w-64 bg-sidebar border-r border-sidebar-border flex flex-col">
       {/* Logo */}
-      <div className="p-6 border-b border-sidebar-border">
-        <img src={logo} alt="Evolved Sound" className="h-10 w-auto" />
+      <div className="p-6 border-b border-sidebar-border flex items-center justify-center">
+        <div className="">
+          <img src={logo} alt="Evolved Sound" className="h-36 w-auto" />
+        </div>
       </div>
 
       {/* Navigation */}
