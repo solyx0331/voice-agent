@@ -66,11 +66,11 @@ const Index = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {agentsLoading ? (
                   Array.from({ length: 4 }).map((_, i) => (
-                    <Skeleton key={i} className="h-32 rounded-xl" />
+                    <Skeleton key={i} className="h-36 sm:h-40 rounded-xl" />
                   ))
                 ) : (
                   agents?.slice(0, 4).map((agent, index) => (
-                    <div key={agent.id} style={{ animationDelay: `${index * 0.15}s` }}>
+                    <div key={agent.id} className="h-full" style={{ animationDelay: `${index * 0.15}s` }}>
                       <VoiceAgentCard 
                         id={agent.id}
                         name={agent.name}

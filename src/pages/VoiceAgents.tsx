@@ -53,17 +53,17 @@ const VoiceAgents = () => {
     <div className="min-h-screen bg-background">
       <Sidebar />
       
-      <main className="ml-64">
+      <main className="ml-0 sm:ml-16 md:ml-64">
         <Header />
         
-        <div className="p-6 space-y-6">
+        <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-5 md:space-y-6">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Voice Agents</h1>
-            <p className="text-muted-foreground">Manage and monitor your AI voice agents</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-foreground">Voice Agents</h1>
+            <p className="text-sm sm:text-base text-muted-foreground">Manage and monitor your AI voice agents</p>
           </div>
 
           {/* Filters */}
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <input
@@ -177,10 +177,10 @@ const VoiceAgents = () => {
           </div>
 
           {/* Agents Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             {isLoading ? (
               Array.from({ length: 6 }).map((_, i) => (
-                <Skeleton key={i} className="h-40 rounded-xl" />
+                <Skeleton key={i} className="h-36 sm:h-40 rounded-xl" />
               ))
             ) : filteredAgents.length > 0 ? (
               filteredAgents.map((agent, index) => (
@@ -196,7 +196,7 @@ const VoiceAgents = () => {
                 </div>
               ))
             ) : (
-              <div className="col-span-full text-center py-12 text-muted-foreground">
+              <div className="col-span-full text-center py-8 sm:py-12 text-muted-foreground text-sm sm:text-base">
                 No agents found
               </div>
             )}

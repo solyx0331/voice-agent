@@ -66,7 +66,7 @@ export function VoiceAgentCard({ id, name, description, status, calls, avgDurati
   };
 
   return (
-    <div className="glass-card rounded-xl p-5 hover:border-primary/30 transition-all duration-300 group">
+    <div className="glass-card rounded-xl p-4 sm:p-5 hover:border-primary/30 transition-all duration-300 group h-full flex flex-col">
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-4">
           <div className="relative">
@@ -237,14 +237,14 @@ export function VoiceAgentCard({ id, name, description, status, calls, avgDurati
         </AlertDialog>
       </div>
 
-      <div className="flex items-center justify-between pt-4 border-t border-border">
-        <div className="flex items-center gap-2 text-sm">
+      <div className="flex items-center justify-between pt-4 mt-auto border-t border-border">
+        <div className="flex items-center gap-2 text-xs sm:text-sm">
           <span className={cn("h-2 w-2 rounded-full", config.color)} />
           <span className="text-muted-foreground">{config.label}</span>
         </div>
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+        <div className="flex items-center gap-3 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
           <div className="flex items-center gap-1">
-            <Phone className="h-4 w-4" />
+            <Phone className="h-3 w-3 sm:h-4 sm:w-4" />
             <span>{calls} calls</span>
           </div>
           <span>Avg: {avgDuration}</span>
