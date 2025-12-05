@@ -188,7 +188,7 @@ export function Header() {
           <PopoverTrigger asChild>
             <button className="relative h-9 w-9 sm:h-10 sm:w-10 rounded-lg bg-secondary border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/50 transition-all flex-shrink-0">
               <Bell className="h-4 w-4 sm:h-5 sm:w-5" />
-              <span className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 h-2 w-2 rounded-full bg-primary" />
+              <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 sm:h-3 sm:w-3 rounded-full bg-primary border-2 border-white" />
             </button>
           </PopoverTrigger>
           <PopoverContent className="w-[calc(100vw-4rem)] sm:w-80 max-w-[320px] sm:max-w-none" align="end">
