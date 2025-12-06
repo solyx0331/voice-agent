@@ -4,12 +4,23 @@ export interface Call {
   contact: string;
   phone: string;
   agent: string;
+  agentId?: string;
   type: "inbound" | "outbound" | "missed";
   duration: string;
   date: string;
   time: string;
   status: "completed" | "missed" | "voicemail";
   recording: boolean;
+  outcome?: "success" | "caller_hung_up" | "speech_not_recognized" | "other";
+  latency?: {
+    avg: number; // milliseconds
+    peak: number; // milliseconds
+  };
+  transcript?: Array<{
+    speaker: "user" | "ai";
+    text: string;
+    timestamp: string;
+  }>;
 }
 
 export interface VoiceAgent {
@@ -19,6 +30,66 @@ export interface VoiceAgent {
   status: "active" | "inactive" | "busy";
   calls: number;
   avgDuration: string;
+  // Enhanced configuration
+  voice?: {
+    type: "generic" | "custom";
+    genericVoice?: string; // e.g., "ElevenLabs - Aria"
+    customVoiceId?: string; // Retell voice ID
+    customVoiceUrl?: string; // Uploaded voice file URL
+  };
+  greetingScript?: string;
+  faqs?: Array<{
+    question: string;
+    answer: string;
+  }>;
+  intents?: Array<{
+    name: string;
+    prompt: string;
+    response?: string;
+  }>;
+  callRules?: {
+    businessHours: {
+      enabled: boolean;
+      timezone: string;
+      schedule: Array<{
+        day: string; // "monday", "tuesday", etc.
+        start: string; // "09:00"
+        end: string; // "17:00"
+      }>;
+    };
+    fallbackToVoicemail: boolean;
+    voicemailMessage?: string;
+  };
+  leadCapture?: {
+    fields: Array<{
+      name: string;
+      question: string;
+      required: boolean;
+      type: "text" | "email" | "phone" | "number";
+    }>;
+  };
+  notifications?: {
+    email?: string;
+    crm?: {
+      type: "webhook" | "salesforce" | "hubspot" | "zapier";
+      endpoint?: string;
+      apiKey?: string;
+    };
+  };
+  // Base Receptionist Logic
+  baseLogic?: {
+    greetingMessage: string;
+    primaryIntentPrompts: string[];
+    leadCaptureQuestions: Array<{
+      question: string;
+      field: string;
+    }>;
+    responseLogic?: Array<{
+      condition: string;
+      action: string;
+      response: string;
+    }>;
+  };
 }
 
 export interface Contact {

@@ -171,6 +171,39 @@ class ApiService {
     };
   }
 
+  async getAgentCalls(agentId: string, limit?: number): Promise<Call[]> {
+    await delay(400);
+    const agent = mockAgents.find(a => a.id === agentId);
+    if (!agent) throw new Error("Agent not found");
+    let calls = mockCalls.filter(call => call.agent === agent.name || call.agentId === agentId);
+    if (limit) {
+      calls = calls.slice(0, limit);
+    }
+    return calls;
+  }
+
+  async uploadVoiceFile(file: File): Promise<{ voiceId: string; url: string }> {
+    await delay(1500);
+    // Simulate file upload
+    if (file.size > 10 * 1024 * 1024) {
+      throw new Error("File size must be less than 10MB");
+    }
+    if (!file.type.startsWith("audio/")) {
+      throw new Error("Please upload an audio file");
+    }
+    const voiceId = `voice_${Date.now()}`;
+    const url = URL.createObjectURL(file);
+    return { voiceId, url };
+  }
+
+  async recordVoice(): Promise<{ blob: Blob; url: string }> {
+    // In real app, this would use Web Audio API to record
+    await delay(1000);
+    const blob = new Blob(["mock audio data"], { type: "audio/webm" });
+    const url = URL.createObjectURL(blob);
+    return { blob, url };
+  }
+
   async updateProfile(data: { firstName?: string; lastName?: string; email?: string; company?: string; timezone?: string }): Promise<void> {
     await delay(800);
     // In real app, this would update the user profile

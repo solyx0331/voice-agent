@@ -415,9 +415,24 @@ const CallHistory = () => {
                             </div>
                           </td>
                           <td className="px-3 sm:px-4 lg:px-5 py-4 hidden sm:table-cell">
-                            <span className={cn("px-2 py-1 rounded-full text-xs font-medium", statusBadge[call.status])}>
-                              {call.status}
-                            </span>
+                            <div className="flex flex-col gap-1">
+                              <span className={cn("px-2 py-1 rounded-full text-xs font-medium w-fit", statusBadge[call.status])}>
+                                {call.status}
+                              </span>
+                              {call.outcome && (
+                                <Badge 
+                                  variant="secondary"
+                                  className={cn(
+                                    "text-[10px] px-1.5 py-0 w-fit",
+                                    call.outcome === "success" && "bg-emerald-500/20 text-emerald-400",
+                                    call.outcome === "caller_hung_up" && "bg-yellow-500/20 text-yellow-400",
+                                    call.outcome === "speech_not_recognized" && "bg-red-500/20 text-red-400"
+                                  )}
+                                >
+                                  {call.outcome.replace(/_/g, " ")}
+                                </Badge>
+                              )}
+                            </div>
                           </td>
                           <td className="px-3 sm:px-4 lg:px-5 py-4" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center gap-2">
@@ -510,7 +525,64 @@ const CallHistory = () => {
                           {selectedCall.status}
                         </span>
                       </div>
+                      {selectedCall.outcome && (
+                        <div>
+                          <Label className="text-sm text-muted-foreground">Outcome</Label>
+                          <Badge 
+                            className={cn(
+                              "mt-1",
+                              selectedCall.outcome === "success" && "bg-emerald-500/20 text-emerald-400",
+                              selectedCall.outcome === "caller_hung_up" && "bg-yellow-500/20 text-yellow-400",
+                              selectedCall.outcome === "speech_not_recognized" && "bg-red-500/20 text-red-400",
+                              selectedCall.outcome === "other" && "bg-muted text-muted-foreground"
+                            )}
+                          >
+                            {selectedCall.outcome.replace(/_/g, " ")}
+                          </Badge>
+                        </div>
+                      )}
+                      {selectedCall.latency && (
+                        <div>
+                          <Label className="text-sm text-muted-foreground">Latency</Label>
+                          <p className="font-medium text-foreground">
+                            Avg: {selectedCall.latency.avg}ms
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Peak: {selectedCall.latency.peak}ms
+                          </p>
+                        </div>
+                      )}
                     </div>
+
+                    {selectedCall.transcript && selectedCall.transcript.length > 0 && (
+                      <div className="pt-4 border-t border-border">
+                        <Label className="text-sm font-medium mb-3 block">Transcript</Label>
+                        <div className="space-y-3 max-h-64 overflow-y-auto">
+                          {selectedCall.transcript.map((entry, index) => (
+                            <div
+                              key={index}
+                              className={cn(
+                                "p-3 rounded-lg",
+                                entry.speaker === "ai" 
+                                  ? "bg-primary/10 border border-primary/20" 
+                                  : "bg-secondary"
+                              )}
+                            >
+                              <div className="flex items-center justify-between mb-1">
+                                <span className={cn(
+                                  "text-xs font-medium",
+                                  entry.speaker === "ai" ? "text-primary" : "text-muted-foreground"
+                                )}>
+                                  {entry.speaker === "ai" ? "AI Agent" : "Caller"}
+                                </span>
+                                <span className="text-xs text-muted-foreground">{entry.timestamp}</span>
+                              </div>
+                              <p className="text-sm text-foreground">{entry.text}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                     {selectedCall.recording && (
                       <div className="pt-4 border-t border-border">

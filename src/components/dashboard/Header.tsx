@@ -2,14 +2,13 @@ import { Bell, Search, Plus, User, Settings, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useCreateAgent } from "@/hooks/useVoiceAgents";
 import { toast } from "sonner";
 import { apiService } from "@/lib/api/api";
+import { AgentConfigDialog } from "@/components/dashboard/AgentConfigDialog";
+import { VoiceAgent } from "@/lib/api/types";
 
 export function Header() {
   const navigate = useNavigate();
@@ -18,11 +17,6 @@ export function Header() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchResults, setSearchResults] = useState<{ agents: any[]; calls: any[]; contacts: any[] } | null>(null);
   const createAgent = useCreateAgent();
-  const [newAgent, setNewAgent] = useState({
-    name: "",
-    description: "",
-    status: "inactive" as const,
-  });
 
   const handleSearch = async (query: string) => {
     setSearchQuery(query);
@@ -35,21 +29,15 @@ export function Header() {
     }
   };
 
-  const handleCreateAgent = async () => {
-    if (!newAgent.name || !newAgent.description) {
-      toast.error("Please fill in all required fields");
-      return;
-    }
-
+  const handleCreateAgent = async (agentData: Partial<VoiceAgent>) => {
     try {
       await createAgent.mutateAsync({
-        ...newAgent,
+        ...agentData,
         calls: 0,
         avgDuration: "0:00",
-      });
+      } as Omit<VoiceAgent, "id">);
       toast.success("Agent created successfully");
       setIsAgentDialogOpen(false);
-      setNewAgent({ name: "", description: "", status: "inactive" });
       navigate("/voice-agents");
     } catch (error) {
       toast.error("Failed to create agent");
@@ -135,58 +123,22 @@ export function Header() {
       </div>
 
       <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 flex-shrink-0">
-        <Dialog open={isAgentDialogOpen} onOpenChange={setIsAgentDialogOpen}>
-          <DialogTrigger asChild>
-            <Button variant="default" size="sm" className="gap-1 sm:gap-2 h-9 sm:h-10 px-2 sm:px-3 md:px-4">
-              <Plus className="h-4 w-4 flex-shrink-0" />
-              <span className="hidden sm:inline">New Agent</span>
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="w-[calc(100vw-2rem)] sm:w-full max-w-md">
-            <DialogHeader>
-              <DialogTitle>Create New Voice Agent</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-5 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="agent-name" className="text-sm font-medium">Agent Name *</Label>
-                <Input
-                  id="agent-name"
-                  value={newAgent.name}
-                  onChange={(e) => setNewAgent({ ...newAgent, name: e.target.value })}
-                  placeholder="Sales Assistant"
-                  className="w-full"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="agent-description" className="text-sm font-medium">Description *</Label>
-                <Input
-                  id="agent-description"
-                  value={newAgent.description}
-                  onChange={(e) => setNewAgent({ ...newAgent, description: e.target.value })}
-                  placeholder="Handles inbound sales inquiries"
-                  className="w-full"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="agent-status" className="text-sm font-medium">Initial Status</Label>
-                <select
-                  id="agent-status"
-                  value={newAgent.status}
-                  onChange={(e) => setNewAgent({ ...newAgent, status: e.target.value as any })}
-                  className="flex h-10 w-full rounded-md border border-input bg-white px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <option value="inactive">Inactive</option>
-                  <option value="active">Active</option>
-                </select>
-              </div>
-              <div className="pt-2">
-                <Button onClick={handleCreateAgent} className="w-full" disabled={createAgent.isPending}>
-                  {createAgent.isPending ? "Creating..." : "Create Agent"}
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <Button 
+          variant="default" 
+          size="sm" 
+          className="gap-1 sm:gap-2 h-9 sm:h-10 px-2 sm:px-3 md:px-4"
+          onClick={() => setIsAgentDialogOpen(true)}
+        >
+          <Plus className="h-4 w-4 flex-shrink-0" />
+          <span className="hidden sm:inline">New Agent</span>
+        </Button>
+        
+        <AgentConfigDialog
+          open={isAgentDialogOpen}
+          onOpenChange={setIsAgentDialogOpen}
+          onSave={handleCreateAgent}
+          isSaving={createAgent.isPending}
+        />
         
         <Popover>
           <PopoverTrigger asChild>

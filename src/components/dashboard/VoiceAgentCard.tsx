@@ -1,15 +1,16 @@
 import { cn } from "@/lib/utils";
-import { Mic, MoreVertical, Phone } from "lucide-react";
+import { Mic, MoreVertical, Phone, Clock, TrendingUp } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { useUpdateAgent, useDeleteAgent, useAgentDetails } from "@/hooks/useVoiceAgents";
-import { VoiceAgent } from "@/lib/api/types";
+import { VoiceAgent, Call } from "@/lib/api/types";
+import { AgentConfigDialog } from "@/components/dashboard/AgentConfigDialog";
+import { apiService } from "@/lib/api/api";
 
 interface VoiceAgentCardProps {
   id: string;
@@ -31,22 +32,34 @@ export function VoiceAgentCard({ id, name, description, status, calls, avgDurati
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-  const [editData, setEditData] = useState({ name, description, status });
+  const [recentCalls, setRecentCalls] = useState<Call[]>([]);
+  const [isLoadingCalls, setIsLoadingCalls] = useState(false);
   
   const updateAgent = useUpdateAgent();
   const deleteAgent = useDeleteAgent();
   const { data: agentDetails, isLoading: detailsLoading } = useAgentDetails(isDetailsOpen ? id : null);
 
-  // Sync editData when props change
+  // Load recent calls for this agent
   useEffect(() => {
-    setEditData({ name, description, status });
-  }, [name, description, status]);
+    const loadRecentCalls = async () => {
+      setIsLoadingCalls(true);
+      try {
+        const calls = await apiService.getAgentCalls(id, 5);
+        setRecentCalls(calls);
+      } catch (error) {
+        console.error("Failed to load recent calls", error);
+      } finally {
+        setIsLoadingCalls(false);
+      }
+    };
+    loadRecentCalls();
+  }, [id]);
 
-  const handleEdit = async () => {
+  const handleEdit = async (agentData: Partial<VoiceAgent>) => {
     try {
       await updateAgent.mutateAsync({
         agentId: id,
-        updates: editData,
+        updates: agentData,
       });
       toast.success("Agent updated successfully");
       setIsEditOpen(false);
@@ -96,7 +109,6 @@ export function VoiceAgentCard({ id, name, description, status, calls, avgDurati
             <DropdownMenuItem onSelect={(e) => {
               e.preventDefault();
               setIsEditOpen(true);
-              setEditData({ name, description, status });
             }}>
               Edit Agent
             </DropdownMenuItem>
@@ -119,49 +131,13 @@ export function VoiceAgentCard({ id, name, description, status, calls, avgDurati
         </DropdownMenu>
 
         {/* Edit Agent Dialog */}
-        <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Edit Voice Agent</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div>
-                <Label htmlFor="edit-name">Agent Name *</Label>
-                <Input
-                  id="edit-name"
-                  value={editData.name}
-                  onChange={(e) => setEditData({ ...editData, name: e.target.value })}
-                  placeholder="Sales Assistant"
-                />
-              </div>
-              <div>
-                <Label htmlFor="edit-description">Description *</Label>
-                <Input
-                  id="edit-description"
-                  value={editData.description}
-                  onChange={(e) => setEditData({ ...editData, description: e.target.value })}
-                  placeholder="Handles inbound sales inquiries"
-                />
-              </div>
-              <div>
-                <Label htmlFor="edit-status">Status</Label>
-                <select
-                  id="edit-status"
-                  value={editData.status}
-                  onChange={(e) => setEditData({ ...editData, status: e.target.value as VoiceAgent["status"] })}
-                  className="w-full px-4 py-2 bg-white border border-border rounded-lg"
-                >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                  <option value="busy">Busy</option>
-                </select>
-              </div>
-              <Button onClick={handleEdit} className="w-full" disabled={updateAgent.isPending || !editData.name || !editData.description}>
-                {updateAgent.isPending ? "Updating..." : "Save Changes"}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <AgentConfigDialog
+          open={isEditOpen}
+          onOpenChange={setIsEditOpen}
+          agent={agentDetails || undefined}
+          onSave={handleEdit}
+          isSaving={updateAgent.isPending}
+        />
 
         {/* View Details Dialog */}
         <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
@@ -237,7 +213,50 @@ export function VoiceAgentCard({ id, name, description, status, calls, avgDurati
         </AlertDialog>
       </div>
 
-      <div className="flex items-center justify-between pt-4 mt-auto border-t border-border">
+      {/* Recent Activity */}
+      <div className="pt-4 mt-auto border-t border-border">
+        <div className="flex items-center justify-between mb-2">
+          <h4 className="text-xs sm:text-sm font-medium text-foreground">Recent Activity</h4>
+        </div>
+        {isLoadingCalls ? (
+          <div className="text-xs text-muted-foreground py-2">Loading...</div>
+        ) : recentCalls.length > 0 ? (
+          <div className="space-y-2">
+            {recentCalls.slice(0, 3).map((call) => (
+              <div key={call.id} className="flex items-center justify-between text-xs">
+                <div className="flex-1 min-w-0">
+                  <p className="text-foreground truncate">{call.contact}</p>
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <span>{call.date}</span>
+                    <span>•</span>
+                    <span>{call.duration}</span>
+                    {call.outcome && (
+                      <>
+                        <span>•</span>
+                        <Badge 
+                          variant="secondary" 
+                          className={cn(
+                            "text-[10px] px-1.5 py-0",
+                            call.outcome === "success" && "bg-emerald-500/20 text-emerald-400",
+                            call.outcome === "caller_hung_up" && "bg-yellow-500/20 text-yellow-400",
+                            call.outcome === "speech_not_recognized" && "bg-red-500/20 text-red-400"
+                          )}
+                        >
+                          {call.outcome.replace(/_/g, " ")}
+                        </Badge>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-xs text-muted-foreground py-2">No recent calls</div>
+        )}
+      </div>
+
+      <div className="flex items-center justify-between pt-3 border-t border-border mt-2">
         <div className="flex items-center gap-2 text-xs sm:text-sm">
           <span className={cn("h-2 w-2 rounded-full", config.color)} />
           <span className="text-muted-foreground">{config.label}</span>
