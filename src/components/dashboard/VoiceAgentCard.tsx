@@ -141,7 +141,7 @@ export function VoiceAgentCard({ id, name, description, status, calls, avgDurati
 
         {/* View Details Dialog */}
         <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Agent Details: {name}</DialogTitle>
             </DialogHeader>
@@ -183,6 +183,84 @@ export function VoiceAgentCard({ id, name, description, status, calls, avgDurati
                     <p className="font-medium">{agentDetails.lastActive}</p>
                   </div>
                 </div>
+
+                {/* Recent Activity Section */}
+                <div className="pt-4 border-t border-border">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-base font-semibold text-foreground">Recent Activity</h3>
+                  </div>
+                  {isLoadingCalls ? (
+                    <div className="text-sm text-muted-foreground py-4 text-center">Loading recent calls...</div>
+                  ) : recentCalls.length > 0 ? (
+                    <div className="space-y-3">
+                      {recentCalls.map((call) => (
+                        <div key={call.id} className="p-3 bg-secondary rounded-lg">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-foreground">{call.contact}</p>
+                              <p className="text-sm text-muted-foreground">{call.phone}</p>
+                              <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                                <span>{call.date}</span>
+                                <span>•</span>
+                                <span>{call.time}</span>
+                                <span>•</span>
+                                <span>{call.duration}</span>
+                              </div>
+                            </div>
+                            <div className="flex flex-col items-end gap-2">
+                              {call.outcome && (
+                                <Badge 
+                                  variant="secondary" 
+                                  className={cn(
+                                    "text-xs px-2 py-1",
+                                    call.outcome === "success" && "bg-emerald-500/20 text-emerald-400",
+                                    call.outcome === "caller_hung_up" && "bg-yellow-500/20 text-yellow-400",
+                                    call.outcome === "speech_not_recognized" && "bg-red-500/20 text-red-400"
+                                  )}
+                                >
+                                  {call.outcome.replace(/_/g, " ")}
+                                </Badge>
+                              )}
+                              {call.latency && (
+                                <div className="text-xs text-muted-foreground">
+                                  <span>Avg: {call.latency.avg}ms</span>
+                                  {call.latency.peak && (
+                                    <span className="ml-2">Peak: {call.latency.peak}ms</span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          {call.transcript && call.transcript.length > 0 && (
+                            <div className="mt-3 pt-3 border-t border-border">
+                              <p className="text-xs font-medium text-muted-foreground mb-2">Transcript Preview</p>
+                              <div className="space-y-1 max-h-32 overflow-y-auto">
+                                {call.transcript.slice(0, 2).map((entry, idx) => (
+                                  <div key={idx} className="text-xs">
+                                    <span className={cn(
+                                      "font-medium",
+                                      entry.speaker === "ai" ? "text-primary" : "text-muted-foreground"
+                                    )}>
+                                      {entry.speaker === "ai" ? "AI: " : "Caller: "}
+                                    </span>
+                                    <span className="text-foreground">{entry.text}</span>
+                                  </div>
+                                ))}
+                                {call.transcript.length > 2 && (
+                                  <p className="text-xs text-muted-foreground italic">
+                                    +{call.transcript.length - 2} more exchanges
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-muted-foreground py-4 text-center">No recent calls</div>
+                  )}
+                </div>
               </div>
             ) : (
               <div className="py-8 text-center text-muted-foreground">Failed to load details</div>
@@ -213,50 +291,7 @@ export function VoiceAgentCard({ id, name, description, status, calls, avgDurati
         </AlertDialog>
       </div>
 
-      {/* Recent Activity */}
-      <div className="pt-4 mt-auto border-t border-border">
-        <div className="flex items-center justify-between mb-2">
-          <h4 className="text-xs sm:text-sm font-medium text-foreground">Recent Activity</h4>
-        </div>
-        {isLoadingCalls ? (
-          <div className="text-xs text-muted-foreground py-2">Loading...</div>
-        ) : recentCalls.length > 0 ? (
-          <div className="space-y-2">
-            {recentCalls.slice(0, 3).map((call) => (
-              <div key={call.id} className="flex items-center justify-between text-xs">
-                <div className="flex-1 min-w-0">
-                  <p className="text-foreground truncate">{call.contact}</p>
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <span>{call.date}</span>
-                    <span>•</span>
-                    <span>{call.duration}</span>
-                    {call.outcome && (
-                      <>
-                        <span>•</span>
-                        <Badge 
-                          variant="secondary" 
-                          className={cn(
-                            "text-[10px] px-1.5 py-0",
-                            call.outcome === "success" && "bg-emerald-500/20 text-emerald-400",
-                            call.outcome === "caller_hung_up" && "bg-yellow-500/20 text-yellow-400",
-                            call.outcome === "speech_not_recognized" && "bg-red-500/20 text-red-400"
-                          )}
-                        >
-                          {call.outcome.replace(/_/g, " ")}
-                        </Badge>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-xs text-muted-foreground py-2">No recent calls</div>
-        )}
-      </div>
-
-      <div className="flex items-center justify-between pt-3 border-t border-border mt-2">
+      <div className="flex items-center justify-between pt-4 mt-auto border-t border-border">
         <div className="flex items-center gap-2 text-xs sm:text-sm">
           <span className={cn("h-2 w-2 rounded-full", config.color)} />
           <span className="text-muted-foreground">{config.label}</span>

@@ -80,6 +80,57 @@ class ApiService {
     return Math.random() > 0.3 ? mockLiveCall : null;
   }
 
+  async getLiveCalls(): Promise<LiveCall[]> {
+    await delay(300);
+    // Return multiple live calls for monitoring page
+    return [
+      mockLiveCall,
+      {
+        id: "live-2",
+        contact: "Sarah Johnson",
+        phone: "+1 (555) 987-6543",
+        agent: "Support Bot",
+        agentId: "2",
+        duration: 120,
+        startTime: new Date(Date.now() - 120000),
+        type: "inbound",
+        status: "active",
+        transcript: [
+          { speaker: "ai", text: "Hello! How can I assist you today?", timestamp: "00:00" },
+          { speaker: "user", text: "I need help with my account", timestamp: "00:03" },
+        ],
+        sentiment: "neutral",
+        isMuted: false,
+        isOnHold: false,
+      },
+    ].filter(Boolean) as LiveCall[];
+  }
+
+  async transferCall(callId: string, targetAgentId: string): Promise<void> {
+    await delay(500);
+    console.log("Call transferred:", callId, "to", targetAgentId);
+  }
+
+  async holdCall(callId: string, hold: boolean): Promise<void> {
+    await delay(300);
+    console.log("Call hold toggled:", callId, hold);
+  }
+
+  async whisperToAgent(callId: string, message: string): Promise<void> {
+    await delay(300);
+    console.log("Whisper sent:", callId, message);
+  }
+
+  async interveneInCall(callId: string): Promise<void> {
+    await delay(500);
+    console.log("Intervening in call:", callId);
+  }
+
+  async updateCallSentiment(callId: string, sentiment: "positive" | "neutral" | "negative"): Promise<void> {
+    await delay(300);
+    console.log("Sentiment updated:", callId, sentiment);
+  }
+
   async getAnalyticsData(): Promise<AnalyticsData> {
     await delay(500);
     return mockAnalyticsData;

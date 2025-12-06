@@ -9,6 +9,7 @@ import CallHistory from "./pages/CallHistory";
 import Contacts from "./pages/Contacts";
 import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
+import LiveCalls from "./pages/LiveCalls";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -23,6 +24,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/voice-agents" element={<VoiceAgents />} />
           <Route path="/call-history" element={<CallHistory />} />
+          <Route path="/live-calls" element={<LiveCalls />} />
           <Route path="/contacts" element={<Contacts />} />
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/settings" element={<Settings />} />

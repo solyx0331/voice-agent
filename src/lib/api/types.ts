@@ -118,8 +118,19 @@ export interface LiveCall {
   contact: string;
   phone: string;
   agent: string;
+  agentId?: string;
   duration: number; // in seconds
   startTime: Date;
+  type?: "inbound" | "outbound";
+  status?: "active" | "on_hold" | "transferring";
+  transcript?: Array<{
+    speaker: "user" | "ai";
+    text: string;
+    timestamp: string;
+  }>;
+  sentiment?: "positive" | "neutral" | "negative";
+  isMuted?: boolean;
+  isOnHold?: boolean;
 }
 
 export interface AnalyticsData {

@@ -160,8 +160,20 @@ export const mockLiveCall: LiveCall | null = {
   contact: "Jennifer Adams",
   phone: "+61 412 345 678",
   agent: "Sales Assistant",
+  agentId: "1",
   duration: 204, // 3:24 in seconds
   startTime: new Date(Date.now() - 204000),
+  type: "inbound",
+  status: "active",
+  transcript: [
+    { speaker: "ai", text: "Hello! Thank you for calling. How can I assist you today?", timestamp: "00:00" },
+    { speaker: "user", text: "Hi, I'm interested in learning more about your services.", timestamp: "00:03" },
+    { speaker: "ai", text: "Great! I'd be happy to help. What specific service are you interested in?", timestamp: "00:05" },
+    { speaker: "user", text: "I'm looking for pricing information.", timestamp: "00:08" },
+  ],
+  sentiment: "positive",
+  isMuted: false,
+  isOnHold: false,
 };
 
 export const mockAnalyticsData: AnalyticsData = {

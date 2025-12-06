@@ -1,13 +1,16 @@
-import { Phone, Mic, Volume2, MicOff } from "lucide-react";
+import { Phone, Mic, Volume2, MicOff, ExternalLink } from "lucide-react";
 import { useLiveCall } from "@/hooks/useDashboard";
 import { useState } from "react";
 import { apiService } from "@/lib/api/api";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 
 export function LiveCallWidget() {
   const { data: liveCall, isLoading } = useLiveCall();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [isMuted, setIsMuted] = useState(false);
   const [volume, setVolume] = useState(100);
 
@@ -71,9 +74,20 @@ export function LiveCallWidget() {
     <div className="glass-card rounded-xl p-4 sm:p-5 border-primary/30">
       <div className="flex items-center justify-between mb-3 sm:mb-4">
         <h2 className="text-base sm:text-lg font-semibold text-foreground">Live Call</h2>
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-          <span className="text-xs sm:text-sm text-primary font-medium">Active</span>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+            <span className="text-xs sm:text-sm text-primary font-medium">Active</span>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate("/live-calls")}
+            className="h-7 px-2 text-xs"
+          >
+            <ExternalLink className="h-3 w-3 mr-1" />
+            View All
+          </Button>
         </div>
       </div>
 
