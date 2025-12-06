@@ -189,6 +189,138 @@ class ApiService {
     console.log("Notification settings updated:", settings);
   }
 
+  async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    await delay(800);
+    if (currentPassword.length < 6) {
+      throw new Error("Current password is incorrect");
+    }
+    if (newPassword.length < 8) {
+      throw new Error("New password must be at least 8 characters");
+    }
+    console.log("Password changed successfully");
+  }
+
+  async enable2FA(): Promise<{ secret: string; qrCode: string }> {
+    await delay(600);
+    return {
+      secret: "JBSWY3DPEHPK3PXP",
+      qrCode: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iIzAwMCIvPjwvc3ZnPg==",
+    };
+  }
+
+  async disable2FA(): Promise<void> {
+    await delay(500);
+    console.log("2FA disabled");
+  }
+
+  async verify2FA(code: string): Promise<void> {
+    await delay(500);
+    if (code.length !== 6) {
+      throw new Error("Invalid verification code");
+    }
+    console.log("2FA verified");
+  }
+
+  async getActiveSessions(): Promise<Array<{ id: string; device: string; location: string; lastActive: string; current: boolean }>> {
+    await delay(400);
+    return [
+      { id: "1", device: "Chrome on Windows", location: "San Francisco, CA", lastActive: "Active now", current: true },
+      { id: "2", device: "Safari on iPhone", location: "San Francisco, CA", lastActive: "2 hours ago", current: false },
+      { id: "3", device: "Chrome on Mac", location: "New York, NY", lastActive: "1 day ago", current: false },
+    ];
+  }
+
+  async revokeSession(sessionId: string): Promise<void> {
+    await delay(400);
+    console.log("Session revoked:", sessionId);
+  }
+
+  async getBillingInfo(): Promise<{
+    plan: string;
+    status: string;
+    nextBillingDate: string;
+    amount: string;
+    paymentMethod: { type: string; last4: string; expiry: string };
+  }> {
+    await delay(400);
+    return {
+      plan: "Professional",
+      status: "active",
+      nextBillingDate: "2024-08-15",
+      amount: "$99.00",
+      paymentMethod: { type: "card", last4: "4242", expiry: "12/25" },
+    };
+  }
+
+  async updatePaymentMethod(data: { cardNumber: string; expiry: string; cvv: string; name: string }): Promise<void> {
+    await delay(800);
+    if (data.cardNumber.length < 16) {
+      throw new Error("Invalid card number");
+    }
+    console.log("Payment method updated");
+  }
+
+  async getInvoices(): Promise<Array<{ id: string; date: string; amount: string; status: string; downloadUrl: string }>> {
+    await delay(400);
+    return [
+      { id: "INV-001", date: "2024-07-15", amount: "$99.00", status: "paid", downloadUrl: "#" },
+      { id: "INV-002", date: "2024-06-15", amount: "$99.00", status: "paid", downloadUrl: "#" },
+      { id: "INV-003", date: "2024-05-15", amount: "$99.00", status: "paid", downloadUrl: "#" },
+    ];
+  }
+
+  async createApiKey(name: string): Promise<{ id: string; key: string; name: string; createdAt: string }> {
+    await delay(600);
+    const key = `sk_live_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
+    return {
+      id: Date.now().toString(),
+      key,
+      name,
+      createdAt: new Date().toISOString().split("T")[0],
+    };
+  }
+
+  async getApiKeys(): Promise<Array<{ id: string; name: string; key: string; createdAt: string; lastUsed: string }>> {
+    await delay(400);
+    return [
+      { id: "1", name: "Production API Key", key: "sk_live_...abc123", createdAt: "2024-01-15", lastUsed: "2 hours ago" },
+      { id: "2", name: "Development API Key", key: "sk_test_...xyz789", createdAt: "2024-06-01", lastUsed: "1 week ago" },
+    ];
+  }
+
+  async deleteApiKey(keyId: string): Promise<void> {
+    await delay(400);
+    console.log("API key deleted:", keyId);
+  }
+
+  async createWebhook(url: string, events: string[]): Promise<{ id: string; url: string; events: string[]; status: string }> {
+    await delay(600);
+    return {
+      id: Date.now().toString(),
+      url,
+      events,
+      status: "active",
+    };
+  }
+
+  async getWebhooks(): Promise<Array<{ id: string; url: string; events: string[]; status: string; createdAt: string }>> {
+    await delay(400);
+    return [
+      { id: "1", url: "https://example.com/webhook", events: ["call.completed", "agent.status_changed"], status: "active", createdAt: "2024-07-01" },
+      { id: "2", url: "https://app.example.com/hooks", events: ["call.started"], status: "inactive", createdAt: "2024-06-15" },
+    ];
+  }
+
+  async deleteWebhook(webhookId: string): Promise<void> {
+    await delay(400);
+    console.log("Webhook deleted:", webhookId);
+  }
+
+  async updateWebhook(webhookId: string, updates: { url?: string; events?: string[]; status?: string }): Promise<void> {
+    await delay(500);
+    console.log("Webhook updated:", webhookId, updates);
+  }
+
   async endCall(callId: string): Promise<void> {
     await delay(500);
     // In real app, this would end the active call
