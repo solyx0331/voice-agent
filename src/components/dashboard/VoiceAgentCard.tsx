@@ -37,7 +37,7 @@ export function VoiceAgentCard({ id, name, description, status, calls, avgDurati
   
   const updateAgent = useUpdateAgent();
   const deleteAgent = useDeleteAgent();
-  const { data: agentDetails, isLoading: detailsLoading } = useAgentDetails(isDetailsOpen ? id : null);
+  const { data: agentDetails, isLoading: detailsLoading } = useAgentDetails((isDetailsOpen || isEditOpen) ? id : null);
 
   // Load recent calls for this agent
   useEffect(() => {
@@ -135,7 +135,7 @@ export function VoiceAgentCard({ id, name, description, status, calls, avgDurati
         <AgentConfigDialog
           open={isEditOpen}
           onOpenChange={setIsEditOpen}
-          agent={agentDetails || undefined}
+          agent={detailsLoading ? undefined : (agentDetails || undefined)}
           onSave={handleEdit}
           isSaving={updateAgent.isPending}
         />

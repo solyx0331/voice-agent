@@ -113,10 +113,15 @@ class ApiService {
   }
 
   async createAgent(agent: Omit<VoiceAgent, "id">): Promise<VoiceAgent> {
+    // Remove fields that are set by the backend automatically
+    const { calls, avgDuration, ...agentData } = agent;
+    
     console.log("new agent", agent);
+    console.log("new agentData", agentData);
+    
     const created = await this.request<any>("/agents", {
       method: "POST",
-      body: JSON.stringify(agent),
+      body: JSON.stringify(agentData),
     });
     return this.transformDocument<VoiceAgent>(created);
   }
