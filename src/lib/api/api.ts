@@ -2,7 +2,7 @@ import { Call, VoiceAgent, Contact, DashboardStats, LiveCall, AnalyticsData } fr
 
 // API Service
 class ApiService {
-  private baseUrl = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api";
+  private baseUrl = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
 
   private async request<T>(
     endpoint: string,
@@ -13,6 +13,7 @@ class ApiService {
       ...options,
       headers: {
         "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "true",
         ...options.headers,
       },
     });
@@ -30,7 +31,13 @@ class ApiService {
     options: RequestInit = {}
   ): Promise<Blob> {
     const url = `${this.baseUrl}${endpoint}`;
-    const response = await fetch(url, options);
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        "ngrok-skip-browser-warning": "true",
+        ...options.headers,
+      },
+    });
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: response.statusText }));
@@ -282,6 +289,9 @@ class ApiService {
     const response = await fetch(`${this.baseUrl}/upload/voice`, {
       method: "POST",
       body: formData,
+      headers: {
+        "ngrok-skip-browser-warning": "true",
+      },
     });
 
     if (!response.ok) {
