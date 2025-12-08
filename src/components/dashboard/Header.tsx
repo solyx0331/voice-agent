@@ -31,6 +31,8 @@ export function Header() {
 
   const handleCreateAgent = async (agentData: Partial<VoiceAgent>) => {
     try {
+
+      console.log("agent data", agentData);
       await createAgent.mutateAsync({
         ...agentData,
         calls: 0,

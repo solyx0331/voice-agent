@@ -93,7 +93,12 @@ class ApiService {
     successRate: number;
   }> {
     const agent = await this.request<any>(`/agents/${agentId}`);
-    return this.transformDocument(agent);
+    return this.transformDocument<VoiceAgent & {
+      createdAt: string;
+      lastActive: string;
+      totalCalls: number;
+      successRate: number;
+    }>(agent);
   }
 
   async getAgentCalls(agentId: string, limit?: number): Promise<Call[]> {
@@ -108,6 +113,7 @@ class ApiService {
   }
 
   async createAgent(agent: Omit<VoiceAgent, "id">): Promise<VoiceAgent> {
+    console.log("new agent", agent);
     const created = await this.request<any>("/agents", {
       method: "POST",
       body: JSON.stringify(agent),
