@@ -20,15 +20,15 @@ export function StatsCard({ title, value, change, changeType = "neutral", icon: 
             <p className={cn(
               "text-xs sm:text-sm font-medium truncate",
               changeType === "positive" && "text-emerald-400",
-              changeType === "negative" && "text-red-400",
+              changeType === "negative" && "text-amber-500",
               changeType === "neutral" && "text-muted-foreground"
             )}>
               {change}
             </p>
           )}
         </div>
-        <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full border-2 border-primary/30 flex items-center justify-center flex-shrink-0">
-          <Icon className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+        <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full border-2 border-accent/30 flex items-center justify-center flex-shrink-0">
+          <Icon className="h-5 w-5 sm:h-6 sm:w-6 text-accent" />
         </div>
       </div>
     </div>

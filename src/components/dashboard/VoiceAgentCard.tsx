@@ -84,13 +84,14 @@ export function VoiceAgentCard({ id, name, description, status, calls, avgDurati
         <div className="flex items-center gap-4">
           <div className="relative">
             <div className="h-12 w-12 rounded-full bg-secondary flex items-center justify-center">
-              <Mic className="h-6 w-6 text-primary" />
+              <Mic className="h-6 w-6 text-accent" />
             </div>
             {status === "busy" && (
               <span className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-primary animate-pulse-ring" />
             )}
             <span className={cn(
-              "absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-card",
+              "absolute -bottom-1 -right-1 h-5 w-5 rounded-full border-2 border-card shadow-sm",
+              status === "active" && "ring-2 ring-emerald-500/50",
               config.color
             )} />
           </div>
@@ -293,7 +294,11 @@ export function VoiceAgentCard({ id, name, description, status, calls, avgDurati
 
       <div className="flex items-center justify-between pt-4 mt-auto border-t border-border">
         <div className="flex items-center gap-2 text-xs sm:text-sm">
-          <span className={cn("h-2 w-2 rounded-full", config.color)} />
+          <span className={cn(
+            "rounded-full",
+            status === "active" ? "h-3 w-3 ring-2 ring-emerald-500/30 shadow-sm" : "h-2 w-2",
+            config.color
+          )} />
           <span className="text-muted-foreground">{config.label}</span>
         </div>
         <div className="flex items-center gap-3 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
