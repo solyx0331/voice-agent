@@ -1,322 +1,367 @@
 import { Call, VoiceAgent, Contact, DashboardStats, LiveCall, AnalyticsData } from "./types";
-import { mockCalls, mockAgents, mockContacts, mockDashboardStats, mockLiveCall, mockAnalyticsData } from "./mockData";
-
-// Simulate API delay
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // API Service
 class ApiService {
-  private baseUrl = import.meta.env.VITE_API_URL || "/api";
+  private baseUrl = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
 
-  async getDashboardStats(): Promise<DashboardStats> {
-    await delay(500);
-    // Simulate slight variations
+  private async request<T>(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<T> {
+    const url = `${this.baseUrl}${endpoint}`;
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: response.statusText }));
+      throw new Error(error.message || `HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+  }
+
+  private async requestFile(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<Blob> {
+    const url = `${this.baseUrl}${endpoint}`;
+    const response = await fetch(url, options);
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: response.statusText }));
+      throw new Error(error.message || `HTTP error! status: ${response.status}`);
+    }
+
+    return response.blob();
+  }
+
+  // Transform MongoDB document to frontend format
+  private transformDocument<T extends { _id?: any; id?: string }>(doc: any): T {
+    if (!doc) return doc;
+    const { _id, ...rest } = doc;
     return {
-      ...mockDashboardStats,
-      totalCallsToday: mockDashboardStats.totalCallsToday + Math.floor(Math.random() * 10),
-    };
+      ...rest,
+      id: _id?.toString() || doc.id || _id,
+    } as T;
+  }
+
+  private transformArray<T extends { _id?: any; id?: string }>(docs: any[]): T[] {
+    return docs.map((doc) => this.transformDocument<T>(doc));
+  }
+
+  // Dashboard
+  async getDashboardStats(): Promise<DashboardStats> {
+    return this.request<DashboardStats>("/dashboard/stats");
   }
 
   async getVoiceAgents(): Promise<VoiceAgent[]> {
-    await delay(400);
-    return mockAgents;
+    const agents = await this.request<any[]>("/dashboard/agents");
+    return this.transformArray<VoiceAgent>(agents);
   }
 
+  async getAnalyticsData(): Promise<AnalyticsData> {
+    return this.request<AnalyticsData>("/dashboard/analytics");
+  }
+
+  async getLiveCall(): Promise<LiveCall | null> {
+    const call = await this.request<LiveCall | null>("/dashboard/live-call");
+    if (!call) return null;
+    return {
+      ...this.transformDocument<LiveCall>(call),
+      startTime: new Date(call.startTime),
+    };
+  }
+
+  async getLiveCalls(): Promise<LiveCall[]> {
+    const calls = await this.request<any[]>("/dashboard/live-calls");
+    return calls.map((call) => ({
+      ...this.transformDocument<LiveCall>(call),
+      startTime: new Date(call.startTime),
+    }));
+  }
+
+  // Agents
+  async getAgentDetails(agentId: string): Promise<VoiceAgent & {
+    createdAt: string;
+    lastActive: string;
+    totalCalls: number;
+    successRate: number;
+  }> {
+    const agent = await this.request<any>(`/agents/${agentId}`);
+    return this.transformDocument(agent);
+  }
+
+  async getAgentCalls(agentId: string, limit?: number): Promise<Call[]> {
+    const url = limit
+      ? `/agents/${agentId}/calls?limit=${limit}`
+      : `/agents/${agentId}/calls`;
+    const calls = await this.request<any[]>(url);
+    return this.transformArray<Call>(calls).map((call) => ({
+      ...call,
+      date: typeof call.date === "string" ? call.date : new Date(call.date).toISOString().split("T")[0],
+    }));
+  }
+
+  async createAgent(agent: Omit<VoiceAgent, "id">): Promise<VoiceAgent> {
+    const created = await this.request<any>("/agents", {
+      method: "POST",
+      body: JSON.stringify(agent),
+    });
+    return this.transformDocument<VoiceAgent>(created);
+  }
+
+  async updateAgent(agentId: string, updates: Partial<Omit<VoiceAgent, "id">>): Promise<VoiceAgent> {
+    const updated = await this.request<any>(`/agents/${agentId}`, {
+      method: "PUT",
+      body: JSON.stringify(updates),
+    });
+    return this.transformDocument<VoiceAgent>(updated);
+  }
+
+  async updateAgentStatus(agentId: string, status: VoiceAgent["status"]): Promise<VoiceAgent> {
+    const updated = await this.request<any>(`/agents/${agentId}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    });
+    return this.transformDocument<VoiceAgent>(updated);
+  }
+
+  async deleteAgent(agentId: string): Promise<void> {
+    await this.request(`/agents/${agentId}`, {
+      method: "DELETE",
+    });
+  }
+
+  // Calls
   async getCalls(filters?: {
     search?: string;
     agent?: string;
     type?: string;
     dateRange?: { start: string; end: string };
   }): Promise<Call[]> {
-    await delay(600);
-    let calls = [...mockCalls];
+    const params = new URLSearchParams();
+    if (filters?.search) params.append("search", filters.search);
+    if (filters?.agent) params.append("agent", filters.agent);
+    if (filters?.type) params.append("type", filters.type);
+    if (filters?.dateRange?.start) params.append("start", filters.dateRange.start);
+    if (filters?.dateRange?.end) params.append("end", filters.dateRange.end);
 
-    if (filters?.search) {
-      const searchLower = filters.search.toLowerCase();
-      calls = calls.filter(
-        call =>
-          call.contact.toLowerCase().includes(searchLower) ||
-          call.phone.includes(searchLower) ||
-          call.agent.toLowerCase().includes(searchLower)
-      );
-    }
-
-    if (filters?.agent) {
-      calls = calls.filter(call => call.agent === filters.agent);
-    }
-
-    if (filters?.type) {
-      calls = calls.filter(call => call.type === filters.type);
-    }
-
-    return calls;
-  }
-
-  async getContacts(search?: string, status?: string): Promise<Contact[]> {
-    await delay(400);
-    let contacts = [...mockContacts];
-
-    if (search) {
-      const searchLower = search.toLowerCase();
-      contacts = contacts.filter(
-        contact =>
-          contact.name.toLowerCase().includes(searchLower) ||
-          contact.email.toLowerCase().includes(searchLower) ||
-          contact.company.toLowerCase().includes(searchLower) ||
-          contact.phone.includes(searchLower)
-      );
-    }
-
-    if (status) {
-      contacts = contacts.filter(contact => contact.status === status);
-    }
-
-    return contacts;
-  }
-
-  async getLiveCall(): Promise<LiveCall | null> {
-    await delay(300);
-    // Randomly return null to simulate no active call
-    return Math.random() > 0.3 ? mockLiveCall : null;
-  }
-
-  async getLiveCalls(): Promise<LiveCall[]> {
-    await delay(300);
-    // Return multiple live calls for monitoring page
-    return [
-      mockLiveCall,
-      {
-        id: "live-2",
-        contact: "Sarah Johnson",
-        phone: "+1 (555) 987-6543",
-        agent: "Support Bot",
-        agentId: "2",
-        duration: 120,
-        startTime: new Date(Date.now() - 120000),
-        type: "inbound",
-        status: "active",
-        transcript: [
-          { speaker: "ai", text: "Hello! How can I assist you today?", timestamp: "00:00" },
-          { speaker: "user", text: "I need help with my account", timestamp: "00:03" },
-        ],
-        sentiment: "neutral",
-        isMuted: false,
-        isOnHold: false,
-      },
-    ].filter(Boolean) as LiveCall[];
+    const url = `/calls${params.toString() ? `?${params.toString()}` : ""}`;
+    const calls = await this.request<any[]>(url);
+    return this.transformArray<Call>(calls).map((call) => ({
+      ...call,
+      date: typeof call.date === "string" ? call.date : new Date(call.date).toISOString().split("T")[0],
+    }));
   }
 
   async transferCall(callId: string, targetAgentId: string): Promise<void> {
-    await delay(500);
-    console.log("Call transferred:", callId, "to", targetAgentId);
+    await this.request(`/calls/${callId}/transfer`, {
+      method: "POST",
+      body: JSON.stringify({ targetAgentId }),
+    });
   }
 
   async holdCall(callId: string, hold: boolean): Promise<void> {
-    await delay(300);
-    console.log("Call hold toggled:", callId, hold);
+    await this.request(`/calls/${callId}/hold`, {
+      method: "POST",
+      body: JSON.stringify({ hold }),
+    });
   }
 
   async whisperToAgent(callId: string, message: string): Promise<void> {
-    await delay(300);
-    console.log("Whisper sent:", callId, message);
+    await this.request(`/calls/${callId}/whisper`, {
+      method: "POST",
+      body: JSON.stringify({ message }),
+    });
   }
 
   async interveneInCall(callId: string): Promise<void> {
-    await delay(500);
-    console.log("Intervening in call:", callId);
+    await this.request(`/calls/${callId}/intervene`, {
+      method: "POST",
+    });
   }
 
   async updateCallSentiment(callId: string, sentiment: "positive" | "neutral" | "negative"): Promise<void> {
-    await delay(300);
-    console.log("Sentiment updated:", callId, sentiment);
+    await this.request(`/calls/${callId}/sentiment`, {
+      method: "PATCH",
+      body: JSON.stringify({ sentiment }),
+    });
   }
 
-  async getAnalyticsData(): Promise<AnalyticsData> {
-    await delay(500);
-    return mockAnalyticsData;
+  async endCall(callId: string): Promise<void> {
+    await this.request(`/calls/${callId}/end`, {
+      method: "POST",
+    });
   }
 
-  async createContact(contact: Omit<Contact, "id">): Promise<Contact> {
-    await delay(800);
-    const newContact: Contact = {
+  async toggleCallMute(callId: string, muted: boolean): Promise<void> {
+    await this.request(`/calls/${callId}/mute`, {
+      method: "POST",
+      body: JSON.stringify({ muted }),
+    });
+  }
+
+  async playRecording(callId: string): Promise<string> {
+    const result = await this.request<{ url: string }>(`/calls/${callId}/recording`);
+    return result.url;
+  }
+
+  async exportCalls(format: "csv" | "json" = "csv"): Promise<Blob> {
+    return this.requestFile(`/calls/export/${format}`);
+  }
+
+  // Contacts
+  async getContacts(search?: string, status?: string): Promise<Contact[]> {
+    const params = new URLSearchParams();
+    if (search) params.append("search", search);
+    if (status) params.append("status", status);
+
+    const url = `/contacts${params.toString() ? `?${params.toString()}` : ""}`;
+    const contacts = await this.request<any[]>(url);
+    return this.transformArray<Contact>(contacts).map((contact) => ({
       ...contact,
-      id: Date.now().toString(),
-    };
-    mockContacts.push(newContact);
-    return newContact;
-  }
-
-  async updateContact(contactId: string, updates: Partial<Omit<Contact, "id">>): Promise<Contact> {
-    await delay(600);
-    const contact = mockContacts.find(c => c.id === contactId);
-    if (!contact) throw new Error("Contact not found");
-    Object.assign(contact, updates);
-    return contact;
-  }
-
-  async deleteContact(contactId: string): Promise<void> {
-    await delay(500);
-    const index = mockContacts.findIndex(c => c.id === contactId);
-    if (index === -1) throw new Error("Contact not found");
-    mockContacts.splice(index, 1);
+      lastContact: typeof contact.lastContact === "string"
+        ? contact.lastContact
+        : contact.lastContact
+        ? new Date(contact.lastContact).toISOString().split("T")[0]
+        : "",
+    }));
   }
 
   async getContactCalls(contactId: string): Promise<Call[]> {
-    await delay(400);
-    const contact = mockContacts.find(c => c.id === contactId);
-    if (!contact) throw new Error("Contact not found");
-    // Filter calls by contact name or phone
-    return mockCalls.filter(call => 
-      call.contact === contact.name || call.phone === contact.phone
-    );
+    const calls = await this.request<any[]>(`/contacts/${contactId}/calls`);
+    return this.transformArray<Call>(calls).map((call) => ({
+      ...call,
+      date: typeof call.date === "string" ? call.date : new Date(call.date).toISOString().split("T")[0],
+    }));
   }
 
-  async createAgent(agent: Omit<VoiceAgent, "id">): Promise<VoiceAgent> {
-    await delay(800);
-    const newAgent: VoiceAgent = {
-      ...agent,
-      id: Date.now().toString(),
-    };
-    mockAgents.push(newAgent);
-    return newAgent;
+  async createContact(contact: Omit<Contact, "id">): Promise<Contact> {
+    const created = await this.request<any>("/contacts", {
+      method: "POST",
+      body: JSON.stringify(contact),
+    });
+    return this.transformDocument<Contact>(created);
   }
 
-  async updateAgentStatus(agentId: string, status: VoiceAgent["status"]): Promise<VoiceAgent> {
-    await delay(500);
-    const agent = mockAgents.find(a => a.id === agentId);
-    if (!agent) throw new Error("Agent not found");
-    agent.status = status;
-    return agent;
+  async updateContact(contactId: string, updates: Partial<Omit<Contact, "id">>): Promise<Contact> {
+    const updated = await this.request<any>(`/contacts/${contactId}`, {
+      method: "PUT",
+      body: JSON.stringify(updates),
+    });
+    return this.transformDocument<Contact>(updated);
   }
 
-  async updateAgent(agentId: string, updates: Partial<Omit<VoiceAgent, "id">>): Promise<VoiceAgent> {
-    await delay(600);
-    const agent = mockAgents.find(a => a.id === agentId);
-    if (!agent) throw new Error("Agent not found");
-    Object.assign(agent, updates);
-    return agent;
+  async deleteContact(contactId: string): Promise<void> {
+    await this.request(`/contacts/${contactId}`, {
+      method: "DELETE",
+    });
   }
 
-  async deleteAgent(agentId: string): Promise<void> {
-    await delay(500);
-    const index = mockAgents.findIndex(a => a.id === agentId);
-    if (index === -1) throw new Error("Agent not found");
-    mockAgents.splice(index, 1);
-  }
-
-  async getAgentDetails(agentId: string): Promise<VoiceAgent & { 
-    createdAt: string;
-    lastActive: string;
-    totalCalls: number;
-    successRate: number;
-  }> {
-    await delay(400);
-    const agent = mockAgents.find(a => a.id === agentId);
-    if (!agent) throw new Error("Agent not found");
-    return {
-      ...agent,
-      createdAt: "2024-01-15",
-      lastActive: "2 hours ago",
-      totalCalls: agent.calls,
-      successRate: 94.5,
-    };
-  }
-
-  async getAgentCalls(agentId: string, limit?: number): Promise<Call[]> {
-    await delay(400);
-    const agent = mockAgents.find(a => a.id === agentId);
-    if (!agent) throw new Error("Agent not found");
-    let calls = mockCalls.filter(call => call.agent === agent.name || call.agentId === agentId);
-    if (limit) {
-      calls = calls.slice(0, limit);
-    }
-    return calls;
-  }
-
+  // Upload
   async uploadVoiceFile(file: File): Promise<{ voiceId: string; url: string }> {
-    await delay(1500);
-    // Simulate file upload
-    if (file.size > 10 * 1024 * 1024) {
-      throw new Error("File size must be less than 10MB");
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await fetch(`${this.baseUrl}/upload/voice`, {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: response.statusText }));
+      throw new Error(error.message || `HTTP error! status: ${response.status}`);
     }
-    if (!file.type.startsWith("audio/")) {
-      throw new Error("Please upload an audio file");
-    }
-    const voiceId = `voice_${Date.now()}`;
-    const url = URL.createObjectURL(file);
-    return { voiceId, url };
+
+    return response.json();
   }
 
   async recordVoice(): Promise<{ blob: Blob; url: string }> {
-    // In real app, this would use Web Audio API to record
-    await delay(1000);
+    const result = await this.request<{ url: string }>("/upload/voice/record", {
+      method: "POST",
+    });
+    // In a real implementation, you would fetch the blob from the URL
     const blob = new Blob(["mock audio data"], { type: "audio/webm" });
-    const url = URL.createObjectURL(blob);
-    return { blob, url };
+    return { blob, url: result.url };
   }
 
-  async updateProfile(data: { firstName?: string; lastName?: string; email?: string; company?: string; timezone?: string }): Promise<void> {
-    await delay(800);
-    // In real app, this would update the user profile
-    console.log("Profile updated:", data);
+  // Settings
+  async updateProfile(data: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    company?: string;
+    timezone?: string;
+  }): Promise<void> {
+    await this.request("/settings/profile", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
   }
 
-  async updateVoiceSettings(data: { voiceModel?: string; speechSpeed?: number; apiKey?: string }): Promise<void> {
-    await delay(800);
-    // In real app, this would update voice settings
-    console.log("Voice settings updated:", data);
+  async updateVoiceSettings(data: {
+    voiceModel?: string;
+    speechSpeed?: number;
+    apiKey?: string;
+  }): Promise<void> {
+    await this.request("/settings/voice", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
   }
 
   async updateNotificationSettings(settings: Record<string, boolean>): Promise<void> {
-    await delay(500);
-    // In real app, this would update notification preferences
-    console.log("Notification settings updated:", settings);
+    await this.request("/settings/notifications", {
+      method: "PUT",
+      body: JSON.stringify(settings),
+    });
   }
 
   async changePassword(currentPassword: string, newPassword: string): Promise<void> {
-    await delay(800);
-    if (currentPassword.length < 6) {
-      throw new Error("Current password is incorrect");
-    }
-    if (newPassword.length < 8) {
-      throw new Error("New password must be at least 8 characters");
-    }
-    console.log("Password changed successfully");
+    await this.request("/settings/password", {
+      method: "POST",
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
   }
 
   async enable2FA(): Promise<{ secret: string; qrCode: string }> {
-    await delay(600);
-    return {
-      secret: "JBSWY3DPEHPK3PXP",
-      qrCode: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iIzAwMCIvPjwvc3ZnPg==",
-    };
+    return this.request<{ secret: string; qrCode: string }>("/settings/2fa/enable", {
+      method: "POST",
+    });
   }
 
   async disable2FA(): Promise<void> {
-    await delay(500);
-    console.log("2FA disabled");
+    await this.request("/settings/2fa/disable", {
+      method: "POST",
+    });
   }
 
   async verify2FA(code: string): Promise<void> {
-    await delay(500);
-    if (code.length !== 6) {
-      throw new Error("Invalid verification code");
-    }
-    console.log("2FA verified");
+    await this.request("/settings/2fa/verify", {
+      method: "POST",
+      body: JSON.stringify({ code }),
+    });
   }
 
-  async getActiveSessions(): Promise<Array<{ id: string; device: string; location: string; lastActive: string; current: boolean }>> {
-    await delay(400);
-    return [
-      { id: "1", device: "Chrome on Windows", location: "San Francisco, CA", lastActive: "Active now", current: true },
-      { id: "2", device: "Safari on iPhone", location: "San Francisco, CA", lastActive: "2 hours ago", current: false },
-      { id: "3", device: "Chrome on Mac", location: "New York, NY", lastActive: "1 day ago", current: false },
-    ];
+  async getActiveSessions(): Promise<Array<{
+    id: string;
+    device: string;
+    location: string;
+    lastActive: string;
+    current: boolean;
+  }>> {
+    return this.request<any[]>("/settings/sessions");
   }
 
   async revokeSession(sessionId: string): Promise<void> {
-    await delay(400);
-    console.log("Session revoked:", sessionId);
+    await this.request(`/settings/sessions/${sessionId}`, {
+      method: "DELETE",
+    });
   }
 
   async getBillingInfo(): Promise<{
@@ -326,145 +371,125 @@ class ApiService {
     amount: string;
     paymentMethod: { type: string; last4: string; expiry: string };
   }> {
-    await delay(400);
-    return {
-      plan: "Professional",
-      status: "active",
-      nextBillingDate: "2024-08-15",
-      amount: "$99.00",
-      paymentMethod: { type: "card", last4: "4242", expiry: "12/25" },
-    };
+    return this.request("/settings/billing");
   }
 
-  async updatePaymentMethod(data: { cardNumber: string; expiry: string; cvv: string; name: string }): Promise<void> {
-    await delay(800);
-    if (data.cardNumber.length < 16) {
-      throw new Error("Invalid card number");
-    }
-    console.log("Payment method updated");
+  async updatePaymentMethod(data: {
+    cardNumber: string;
+    expiry: string;
+    cvv: string;
+    name: string;
+  }): Promise<void> {
+    await this.request("/settings/billing/payment-method", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
   }
 
-  async getInvoices(): Promise<Array<{ id: string; date: string; amount: string; status: string; downloadUrl: string }>> {
-    await delay(400);
-    return [
-      { id: "INV-001", date: "2024-07-15", amount: "$99.00", status: "paid", downloadUrl: "#" },
-      { id: "INV-002", date: "2024-06-15", amount: "$99.00", status: "paid", downloadUrl: "#" },
-      { id: "INV-003", date: "2024-05-15", amount: "$99.00", status: "paid", downloadUrl: "#" },
-    ];
+  async getInvoices(): Promise<Array<{
+    id: string;
+    date: string;
+    amount: string;
+    status: string;
+    downloadUrl: string;
+  }>> {
+    return this.request<any[]>("/settings/billing/invoices");
   }
 
-  async createApiKey(name: string): Promise<{ id: string; key: string; name: string; createdAt: string }> {
-    await delay(600);
-    const key = `sk_live_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
-    return {
-      id: Date.now().toString(),
-      key,
-      name,
-      createdAt: new Date().toISOString().split("T")[0],
-    };
+  async createApiKey(name: string): Promise<{
+    id: string;
+    key: string;
+    name: string;
+    createdAt: string;
+  }> {
+    return this.request("/settings/api-keys", {
+      method: "POST",
+      body: JSON.stringify({ name }),
+    });
   }
 
-  async getApiKeys(): Promise<Array<{ id: string; name: string; key: string; createdAt: string; lastUsed: string }>> {
-    await delay(400);
-    return [
-      { id: "1", name: "Production API Key", key: "sk_live_...abc123", createdAt: "2024-01-15", lastUsed: "2 hours ago" },
-      { id: "2", name: "Development API Key", key: "sk_test_...xyz789", createdAt: "2024-06-01", lastUsed: "1 week ago" },
-    ];
+  async getApiKeys(): Promise<Array<{
+    id: string;
+    name: string;
+    key: string;
+    createdAt: string;
+    lastUsed?: string;
+  }>> {
+    return this.request<any[]>("/settings/api-keys");
   }
 
   async deleteApiKey(keyId: string): Promise<void> {
-    await delay(400);
-    console.log("API key deleted:", keyId);
+    await this.request(`/settings/api-keys/${keyId}`, {
+      method: "DELETE",
+    });
   }
 
-  async createWebhook(url: string, events: string[]): Promise<{ id: string; url: string; events: string[]; status: string }> {
-    await delay(600);
-    return {
-      id: Date.now().toString(),
-      url,
-      events,
-      status: "active",
-    };
+  async createWebhook(url: string, events: string[]): Promise<{
+    id: string;
+    url: string;
+    events: string[];
+    status: string;
+  }> {
+    return this.request("/settings/webhooks", {
+      method: "POST",
+      body: JSON.stringify({ url, events }),
+    });
   }
 
-  async getWebhooks(): Promise<Array<{ id: string; url: string; events: string[]; status: string; createdAt: string }>> {
-    await delay(400);
-    return [
-      { id: "1", url: "https://example.com/webhook", events: ["call.completed", "agent.status_changed"], status: "active", createdAt: "2024-07-01" },
-      { id: "2", url: "https://app.example.com/hooks", events: ["call.started"], status: "inactive", createdAt: "2024-06-15" },
-    ];
+  async getWebhooks(): Promise<Array<{
+    id: string;
+    url: string;
+    events: string[];
+    status: string;
+    createdAt?: string;
+  }>> {
+    return this.request<any[]>("/settings/webhooks");
+  }
+
+  async updateWebhook(webhookId: string, updates: {
+    url?: string;
+    events?: string[];
+    status?: string;
+  }): Promise<void> {
+    await this.request(`/settings/webhooks/${webhookId}`, {
+      method: "PUT",
+      body: JSON.stringify(updates),
+    });
   }
 
   async deleteWebhook(webhookId: string): Promise<void> {
-    await delay(400);
-    console.log("Webhook deleted:", webhookId);
+    await this.request(`/settings/webhooks/${webhookId}`, {
+      method: "DELETE",
+    });
   }
 
-  async updateWebhook(webhookId: string, updates: { url?: string; events?: string[]; status?: string }): Promise<void> {
-    await delay(500);
-    console.log("Webhook updated:", webhookId, updates);
-  }
+  // Search
+  async searchGlobal(query: string): Promise<{
+    agents: VoiceAgent[];
+    calls: Call[];
+    contacts: Contact[];
+  }> {
+    const result = await this.request<{
+      agents: any[];
+      calls: any[];
+      contacts: any[];
+    }>(`/search?q=${encodeURIComponent(query)}`);
 
-  async endCall(callId: string): Promise<void> {
-    await delay(500);
-    // In real app, this would end the active call
-    console.log("Call ended:", callId);
-  }
-
-  async toggleCallMute(callId: string, muted: boolean): Promise<void> {
-    await delay(300);
-    // In real app, this would toggle mute
-    console.log("Call mute toggled:", callId, muted);
-  }
-
-  async playRecording(callId: string): Promise<string> {
-    await delay(500);
-    // In real app, this would return the recording URL
-    return `https://example.com/recordings/${callId}.mp3`;
-  }
-
-  async exportCalls(format: "csv" | "json" = "csv"): Promise<Blob> {
-    await delay(1000);
-    const data = format === "csv" 
-      ? this.convertToCSV(mockCalls)
-      : JSON.stringify(mockCalls, null, 2);
-    return new Blob([data], { type: format === "csv" ? "text/csv" : "application/json" });
-  }
-
-  async searchGlobal(query: string): Promise<{ agents: VoiceAgent[]; calls: Call[]; contacts: Contact[] }> {
-    await delay(600);
-    const queryLower = query.toLowerCase();
     return {
-      agents: mockAgents.filter(a => 
-        a.name.toLowerCase().includes(queryLower) || 
-        a.description.toLowerCase().includes(queryLower)
-      ),
-      calls: mockCalls.filter(c => 
-        c.contact.toLowerCase().includes(queryLower) ||
-        c.phone.includes(queryLower) ||
-        c.agent.toLowerCase().includes(queryLower)
-      ),
-      contacts: mockContacts.filter(c => 
-        c.name.toLowerCase().includes(queryLower) ||
-        c.email.toLowerCase().includes(queryLower) ||
-        c.company.toLowerCase().includes(queryLower)
-      ),
+      agents: this.transformArray<VoiceAgent>(result.agents),
+      calls: this.transformArray<Call>(result.calls).map((call) => ({
+        ...call,
+        date: typeof call.date === "string" ? call.date : new Date(call.date).toISOString().split("T")[0],
+      })),
+      contacts: this.transformArray<Contact>(result.contacts).map((contact) => ({
+        ...contact,
+        lastContact: typeof contact.lastContact === "string"
+          ? contact.lastContact
+          : contact.lastContact
+          ? new Date(contact.lastContact).toISOString().split("T")[0]
+          : "",
+      })),
     };
-  }
-
-  private convertToCSV(calls: Call[]): string {
-    const headers = ["Contact", "Phone", "Agent", "Type", "Duration", "Date", "Time", "Status"];
-    const rows = calls.map(call => [
-      call.contact,
-      call.phone,
-      call.agent,
-      call.type,
-      call.duration,
-      call.date,
-      call.time,
-      call.status,
-    ]);
-    return [headers.join(","), ...rows.map(row => row.join(","))].join("\n");
   }
 }
 
