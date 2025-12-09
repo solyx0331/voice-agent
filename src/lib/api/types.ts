@@ -21,6 +21,22 @@ export interface Call {
     text: string;
     timestamp: string;
   }>;
+  // Retell-specific fields
+  retellCallId?: string; // Retell call ID for tracking
+  twilioCallSid?: string; // Twilio Call SID for tracking
+  recordingUrl?: string; // URL to call recording (if available)
+  callAnalysis?: {
+    sentiment?: "positive" | "neutral" | "negative" | "unknown";
+    summary?: string;
+    extractedData?: Record<string, any>;
+  };
+  callCost?: {
+    total?: number;
+    currency?: string;
+  };
+  disconnectionReason?: string; // Reason for call end
+  startTime?: string; // Actual call start time (ISO string)
+  endTime?: string; // Actual call end time (ISO string)
 }
 
 export interface VoiceAgent {

@@ -81,8 +81,25 @@ const CallHistory = () => {
     }
   };
 
-  const handlePlayRecording = async (callId: string) => {
+  const handlePlayRecording = async (callId: string, call?: Call) => {
     try {
+      // If call object is provided and has recordingUrl, use it directly
+      if (call?.recordingUrl) {
+        setRecordingUrl(call.recordingUrl);
+        setPlayingRecordingId(callId);
+        
+        // Play the audio
+        if (audioRef.current) {
+          audioRef.current.src = call.recordingUrl;
+          audioRef.current.play().catch((error) => {
+            toast.error("Failed to play recording");
+            setPlayingRecordingId(null);
+          });
+        }
+        return;
+      }
+
+      // Otherwise, use existing logic
       if (playingRecordingId === callId && audioRef.current) {
         // Pause if already playing
         audioRef.current.pause();
@@ -552,7 +569,91 @@ const CallHistory = () => {
                           </p>
                         </div>
                       )}
+                      {selectedCall.disconnectionReason && (
+                        <div>
+                          <Label className="text-sm text-muted-foreground">Disconnection Reason</Label>
+                          <p className="font-medium text-foreground capitalize">
+                            {selectedCall.disconnectionReason.replace(/_/g, " ")}
+                          </p>
+                        </div>
+                      )}
+                      {selectedCall.callCost && (
+                        <div>
+                          <Label className="text-sm text-muted-foreground">Call Cost</Label>
+                          <p className="font-medium text-foreground">
+                            {selectedCall.callCost.currency || "USD"} {selectedCall.callCost.total?.toFixed(2) || "0.00"}
+                          </p>
+                        </div>
+                      )}
+                      {selectedCall.startTime && (
+                        <div>
+                          <Label className="text-sm text-muted-foreground">Start Time</Label>
+                          <p className="font-medium text-foreground">
+                            {new Date(selectedCall.startTime).toLocaleString()}
+                          </p>
+                        </div>
+                      )}
+                      {selectedCall.endTime && (
+                        <div>
+                          <Label className="text-sm text-muted-foreground">End Time</Label>
+                          <p className="font-medium text-foreground">
+                            {new Date(selectedCall.endTime).toLocaleString()}
+                          </p>
+                        </div>
+                      )}
                     </div>
+
+                    {/* Call Analysis Section */}
+                    {selectedCall.callAnalysis && (
+                      <div className="pt-4 border-t border-border space-y-4">
+                        <Label className="text-sm font-medium mb-3 block">Call Analysis</Label>
+                        
+                        {selectedCall.callAnalysis.sentiment && (
+                          <div>
+                            <Label className="text-xs text-muted-foreground mb-1 block">Sentiment</Label>
+                            <Badge 
+                              className={cn(
+                                "capitalize",
+                                selectedCall.callAnalysis.sentiment === "positive" && "bg-emerald-500/20 text-emerald-400",
+                                selectedCall.callAnalysis.sentiment === "negative" && "bg-red-500/20 text-red-400",
+                                selectedCall.callAnalysis.sentiment === "neutral" && "bg-blue-500/20 text-blue-400",
+                                selectedCall.callAnalysis.sentiment === "unknown" && "bg-muted text-muted-foreground"
+                              )}
+                            >
+                              {selectedCall.callAnalysis.sentiment}
+                            </Badge>
+                          </div>
+                        )}
+
+                        {selectedCall.callAnalysis.summary && (
+                          <div>
+                            <Label className="text-xs text-muted-foreground mb-1 block">Summary</Label>
+                            <p className="text-sm text-foreground bg-secondary p-3 rounded-lg">
+                              {selectedCall.callAnalysis.summary}
+                            </p>
+                          </div>
+                        )}
+
+                        {selectedCall.callAnalysis.extractedData && 
+                         Object.keys(selectedCall.callAnalysis.extractedData).length > 0 && (
+                          <div>
+                            <Label className="text-xs text-muted-foreground mb-1 block">Extracted Data</Label>
+                            <div className="bg-secondary p-3 rounded-lg space-y-2">
+                              {Object.entries(selectedCall.callAnalysis.extractedData).map(([key, value]) => (
+                                <div key={key} className="flex justify-between">
+                                  <span className="text-xs font-medium text-muted-foreground capitalize">
+                                    {key.replace(/_/g, " ")}:
+                                  </span>
+                                  <span className="text-xs text-foreground">
+                                    {typeof value === "object" ? JSON.stringify(value) : String(value)}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {selectedCall.transcript && selectedCall.transcript.length > 0 && (
                       <div className="pt-4 border-t border-border">
@@ -592,7 +693,7 @@ const CallHistory = () => {
                             <Button
                               variant="default"
                               size="sm"
-                              onClick={() => handlePlayRecording(selectedCall.id)}
+                              onClick={() => handlePlayRecording(selectedCall.id, selectedCall)}
                               className="gap-2"
                             >
                               {playingRecordingId === selectedCall.id ? (
