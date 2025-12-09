@@ -512,6 +512,21 @@ class ApiService {
       })),
     };
   }
+
+  // Voices
+  async getAvailableVoices(): Promise<Array<{
+    voice_id: string;
+    voice_name: string;
+    provider: string;
+    display_name: string;
+  }>> {
+    return this.request<Array<{
+      voice_id: string;
+      voice_name: string;
+      provider: string;
+      display_name: string;
+    }>>("/voices");
+  }
 }
 
 export const apiService = new ApiService();

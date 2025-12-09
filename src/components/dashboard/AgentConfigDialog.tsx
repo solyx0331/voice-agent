@@ -28,6 +28,13 @@ export function AgentConfigDialog({ open, onOpenChange, agent, onSave, isSaving 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [availableVoices, setAvailableVoices] = useState<Array<{
+    voice_id: string;
+    voice_name: string;
+    provider: string;
+    display_name: string;
+  }>>([]);
+  const [voicesLoading, setVoicesLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -70,40 +77,73 @@ export function AgentConfigDialog({ open, onOpenChange, agent, onSave, isSaving 
     },
   });
 
+  // Fetch available voices when dialog opens
+  useEffect(() => {
+    if (open) {
+      setVoicesLoading(true);
+      apiService.getAvailableVoices()
+        .then((voices) => {
+          setAvailableVoices(voices);
+          console.log("Available voices:", voices);
+          // Set default voice if none selected and voices are available
+          if (voices.length > 0 && !formData.voice.genericVoice) {
+            setFormData(prev => ({
+              ...prev,
+              voice: {
+                ...prev.voice,
+                genericVoice: voices[0].display_name,
+              },
+            }));
+          }
+        })
+        .catch((error) => {
+          console.error("Failed to fetch voices:", error);
+          toast.error("Failed to load available voices");
+        })
+        .finally(() => {
+          setVoicesLoading(false);
+        });
+    }
+  }, [open]);
+
   useEffect(() => {
     if (agent) {
       setFormData({
         name: agent.name || "",
         description: agent.description || "",
         status: agent.status || "inactive",
-        voice: agent.voice || {
-          type: "generic",
-          genericVoice: "ElevenLabs - Aria",
-          customVoiceId: "",
-          customVoiceUrl: "",
+        voice: {
+          type: agent.voice?.type || "generic",
+          genericVoice: agent.voice?.genericVoice || (availableVoices.length > 0 ? availableVoices[0].display_name : "ElevenLabs - Aria"),
+          customVoiceId: agent.voice?.customVoiceId || "",
+          customVoiceUrl: agent.voice?.customVoiceUrl || "",
         },
         greetingScript: agent.greetingScript || "",
         faqs: agent.faqs || [],
         intents: agent.intents || [],
-        callRules: agent.callRules || {
+        callRules: {
           businessHours: {
-            enabled: false,
-            timezone: "UTC-8 (Pacific Time)",
-            schedule: [],
+            enabled: agent.callRules?.businessHours?.enabled || false,
+            timezone: agent.callRules?.businessHours?.timezone || "UTC-8 (Pacific Time)",
+            schedule: agent.callRules?.businessHours?.schedule || [],
           },
-          fallbackToVoicemail: false,
-          voicemailMessage: "",
+          fallbackToVoicemail: agent.callRules?.fallbackToVoicemail || false,
+          voicemailMessage: agent.callRules?.voicemailMessage || "",
         },
         leadCapture: agent.leadCapture || { fields: [] },
-        notifications: agent.notifications || {
-          email: "",
-          crm: { type: "webhook", endpoint: "", apiKey: "" },
+        notifications: {
+          email: agent.notifications?.email || "",
+          crm: {
+            type: agent.notifications?.crm?.type || "webhook",
+            endpoint: agent.notifications?.crm?.endpoint || "",
+            apiKey: agent.notifications?.crm?.apiKey || "",
+          },
         },
-        baseLogic: agent.baseLogic || {
-          greetingMessage: "",
-          primaryIntentPrompts: [],
-          leadCaptureQuestions: [],
-          responseLogic: [],
+        baseLogic: {
+          greetingMessage: agent.baseLogic?.greetingMessage || "",
+          primaryIntentPrompts: agent.baseLogic?.primaryIntentPrompts || [],
+          leadCaptureQuestions: agent.baseLogic?.leadCaptureQuestions || [],
+          responseLogic: agent.baseLogic?.responseLogic || [],
         },
       });
     } else {
@@ -114,7 +154,7 @@ export function AgentConfigDialog({ open, onOpenChange, agent, onSave, isSaving 
         status: "inactive",
         voice: {
           type: "generic",
-          genericVoice: "ElevenLabs - Aria",
+          genericVoice: availableVoices.length > 0 ? availableVoices[0].display_name : "ElevenLabs - Aria",
           customVoiceId: "",
           customVoiceUrl: "",
         },
@@ -143,7 +183,7 @@ export function AgentConfigDialog({ open, onOpenChange, agent, onSave, isSaving 
         },
       });
     }
-  }, [agent, open]);
+  }, [agent, open, availableVoices]);
 
   const handleSave = async () => {
     if (!formData.name || !formData.description) {
@@ -604,18 +644,26 @@ export function AgentConfigDialog({ open, onOpenChange, agent, onSave, isSaving 
                     ...formData,
                     voice: { ...formData.voice, genericVoice: value },
                   })}
+                  disabled={voicesLoading}
                 >
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder={voicesLoading ? "Loading voices..." : "Select a voice"} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ElevenLabs - Aria">ElevenLabs - Aria</SelectItem>
-                    <SelectItem value="ElevenLabs - Roger">ElevenLabs - Roger</SelectItem>
-                    <SelectItem value="ElevenLabs - Sarah">ElevenLabs - Sarah</SelectItem>
-                    <SelectItem value="OpenAI - Alloy">OpenAI - Alloy</SelectItem>
-                    <SelectItem value="OpenAI - Echo">OpenAI - Echo</SelectItem>
+                    {availableVoices.length > 0 ? (
+                      availableVoices.map((voice) => (
+                        <SelectItem key={voice.voice_id} value={voice.display_name}>
+                          {voice.display_name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="" disabled>No voices available</SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
+                {voicesLoading && (
+                  <p className="text-xs text-muted-foreground mt-1">Loading voices from Retell...</p>
+                )}
               </div>
             ) : (
               <div className="space-y-4">

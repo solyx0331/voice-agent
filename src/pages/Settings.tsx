@@ -36,10 +36,17 @@ const Settings = () => {
     timezone: "UTC-8 (Pacific Time)",
   });
   const [voiceSettings, setVoiceSettings] = useState({
-    voiceModel: "ElevenLabs - Aria",
+    voiceModel: "ElevenLabs - Anthony",
     speechSpeed: 1,
     apiKey: "sk-xxxxxxxxxxxxxxxx",
   });
+  const [availableVoices, setAvailableVoices] = useState<Array<{
+    voice_id: string;
+    voice_name: string;
+    provider: string;
+    display_name: string;
+  }>>([]);
+  const [voicesLoading, setVoicesLoading] = useState(false);
   const [notifications, setNotifications] = useState({
     callAlerts: true,
     dailySummary: true,
@@ -84,10 +91,10 @@ const Settings = () => {
   const [invoices, setInvoices] = useState<Array<{ id: string; date: string; amount: string; status: string; downloadUrl: string }>>([]);
 
   // API & Integrations state
-  const [apiKeys, setApiKeys] = useState<Array<{ id: string; name: string; key: string; createdAt: string; lastUsed: string }>>([]);
+  const [apiKeys, setApiKeys] = useState<Array<{ id: string; name: string; key: string; createdAt: string; lastUsed?: string }>>([]);
   const [newApiKeyName, setNewApiKeyName] = useState("");
   const [newApiKey, setNewApiKey] = useState<string | null>(null);
-  const [webhooks, setWebhooks] = useState<Array<{ id: string; url: string; events: string[]; status: string; createdAt: string }>>([]);
+  const [webhooks, setWebhooks] = useState<Array<{ id: string; url: string; events: string[]; status: string; createdAt?: string }>>([]);
   const [newWebhook, setNewWebhook] = useState({ url: "", events: [] as string[] });
   const [isWebhookDialogOpen, setIsWebhookDialogOpen] = useState(false);
 
@@ -361,6 +368,27 @@ const Settings = () => {
       apiService.getApiKeys().then(setApiKeys).catch(() => {});
       apiService.getWebhooks().then(setWebhooks).catch(() => {});
     }
+    if (activeTab === "voice") {
+      setVoicesLoading(true);
+      apiService.getAvailableVoices()
+        .then((voices) => {
+          setAvailableVoices(voices);
+          // Set default voice if none selected and voices are available
+          if (voices.length > 0 && !voiceSettings.voiceModel) {
+            setVoiceSettings(prev => ({
+              ...prev,
+              voiceModel: voices[0].display_name,
+            }));
+          }
+        })
+        .catch((error) => {
+          console.error("Failed to fetch voices:", error);
+          toast.error("Failed to load available voices");
+        })
+        .finally(() => {
+          setVoicesLoading(false);
+        });
+    }
   }, [activeTab]);
 
   return (
@@ -543,13 +571,24 @@ const Settings = () => {
                     <select
                       value={voiceSettings.voiceModel}
                       onChange={(e) => setVoiceSettings({ ...voiceSettings, voiceModel: e.target.value })}
-                      className="w-full px-3 sm:px-4 py-2 bg-white border border-border rounded-lg text-sm sm:text-base text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                      disabled={voicesLoading}
+                      className="w-full px-3 sm:px-4 py-2 bg-white border border-border rounded-lg text-sm sm:text-base text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <option>ElevenLabs - Aria</option>
-                      <option>ElevenLabs - Roger</option>
-                      <option>ElevenLabs - Sarah</option>
-                      <option>OpenAI - Alloy</option>
+                      {voicesLoading ? (
+                        <option>Loading voices...</option>
+                      ) : availableVoices.length > 0 ? (
+                        availableVoices.map((voice) => (
+                          <option key={voice.voice_id} value={voice.display_name}>
+                            {voice.display_name}
+                          </option>
+                        ))
+                      ) : (
+                        <option>No voices available</option>
+                      )}
                     </select>
+                    {voicesLoading && (
+                      <p className="text-xs text-muted-foreground mt-1">Loading voices from Retell...</p>
+                    )}
                   </div>
 
                   <div>
