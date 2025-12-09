@@ -19,6 +19,7 @@ interface VoiceAgentCardProps {
   status: "active" | "inactive" | "busy";
   calls: number;
   avgDuration: string;
+  phoneNumber?: string;
 }
 
 const statusConfig = {
@@ -27,7 +28,7 @@ const statusConfig = {
   busy: { label: "On Call", color: "bg-primary", ring: "ring-primary/30" },
 };
 
-export function VoiceAgentCard({ id, name, description, status, calls, avgDuration }: VoiceAgentCardProps) {
+export function VoiceAgentCard({ id, name, description, status, calls, avgDuration, phoneNumber }: VoiceAgentCardProps) {
   const config = statusConfig[status];
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -98,6 +99,12 @@ export function VoiceAgentCard({ id, name, description, status, calls, avgDurati
           <div>
             <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">{name}</h3>
             <p className="text-sm text-muted-foreground">{description}</p>
+            {phoneNumber && (
+              <div className="flex items-center gap-1.5 mt-2 p-1.5 bg-primary/5 rounded-md border border-primary/10">
+                <Phone className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+                <span className="text-xs font-medium text-foreground">{phoneNumber}</span>
+              </div>
+            )}
           </div>
         </div>
         <DropdownMenu>
@@ -183,6 +190,15 @@ export function VoiceAgentCard({ id, name, description, status, calls, avgDurati
                     <Label className="text-sm text-muted-foreground">Last Active</Label>
                     <p className="font-medium">{agentDetails.lastActive}</p>
                   </div>
+                  {agentDetails.phoneNumber && (
+                    <div className="col-span-2">
+                      <Label className="text-sm text-muted-foreground">Phone Number</Label>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Phone className="h-4 w-4 text-muted-foreground" />
+                        <p className="font-medium text-foreground">{agentDetails.phoneNumber}</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Recent Activity Section */}

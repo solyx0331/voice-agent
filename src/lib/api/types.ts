@@ -30,6 +30,10 @@ export interface VoiceAgent {
   status: "active" | "inactive" | "busy";
   calls: number;
   avgDuration: string;
+  // Phone number configuration
+  phoneNumber?: string; // Twilio phone number in E.164 format (e.g., +61412345678)
+  twilioPhoneNumberSid?: string; // Twilio Phone Number SID
+  webhookUrl?: string; // Webhook URL configured for the phone number
   // Enhanced configuration
   voice?: {
     type: "generic" | "custom";

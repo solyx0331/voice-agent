@@ -191,6 +191,7 @@ const VoiceAgents = () => {
                     description={agent.description}
                     status={agent.status}
                     calls={agent.calls}
+                    phoneNumber={agent.phoneNumber}
                     avgDuration={agent.avgDuration}
                   />
                 </div>

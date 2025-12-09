@@ -78,6 +78,7 @@ const Index = () => {
                         status={agent.status}
                         calls={agent.calls}
                         avgDuration={agent.avgDuration}
+                        phoneNumber={agent.phoneNumber}
                       />
                     </div>
                   ))
