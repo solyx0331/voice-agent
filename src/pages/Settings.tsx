@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 
 const tabs = [
   { id: "profile", label: "Profile", icon: User },
@@ -546,15 +547,10 @@ const Settings = () => {
                             <h3 className="font-medium text-foreground text-sm sm:text-base">{item.title}</h3>
                             <p className="text-xs sm:text-sm text-muted-foreground">{item.description}</p>
                         </div>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={notifications[key] || false}
-                              onChange={(e) => handleNotificationToggle(key, e.target.checked)}
-                              className="sr-only peer"
-                            />
-                          <div className="w-11 h-6 bg-secondary rounded-full peer peer-checked:bg-primary peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
-                        </label>
+                        <Switch
+                          checked={notifications[key] || false}
+                          onCheckedChange={(checked) => handleNotificationToggle(key, checked)}
+                        />
                       </div>
                       );
                     })}
