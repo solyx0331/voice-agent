@@ -50,10 +50,50 @@ export function LiveCallWidget() {
 
   if (isLoading) {
     return (
-      <div className="glass-card rounded-xl p-5 border-primary/30">
-        <div className="animate-pulse space-y-4">
-          <div className="h-4 bg-secondary rounded w-1/2" />
-          <div className="h-20 bg-secondary rounded" />
+      <div className="glass-card rounded-xl p-4 sm:p-5 border-primary/30">
+        {/* Header skeleton */}
+        <div className="flex items-center justify-between mb-3 sm:mb-4">
+          <div className="h-5 sm:h-6 bg-border/80 rounded w-24 animate-pulse" />
+          <div className="flex items-center gap-2">
+            <div className="h-4 w-16 bg-border/80 rounded animate-pulse" />
+            <div className="h-7 w-20 bg-border/80 rounded animate-pulse" />
+          </div>
+        </div>
+
+        {/* Call info skeleton */}
+        <div className="bg-secondary/50 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
+          <div className="flex items-center gap-3 sm:gap-4 mb-2 sm:mb-3">
+            <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-border/80 border border-border/50 animate-pulse flex-shrink-0" />
+            <div className="min-w-0 flex-1 space-y-2">
+              <div className="h-4 sm:h-5 bg-border/80 rounded w-3/4 animate-pulse" />
+              <div className="h-3 sm:h-4 bg-border/80 rounded w-1/2 animate-pulse" />
+            </div>
+          </div>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-0">
+            <div className="h-3 sm:h-4 bg-border/80 rounded w-1/3 animate-pulse" />
+            <div className="h-3 sm:h-4 bg-border/80 rounded w-16 animate-pulse" />
+          </div>
+        </div>
+
+        {/* Audio waveform skeleton */}
+        <div className="flex items-center justify-center gap-0.5 sm:gap-1 h-10 sm:h-12 mb-3 sm:mb-4">
+          {Array.from({ length: 20 }).map((_, i) => (
+            <div
+              key={i}
+              className="w-0.5 sm:w-1 bg-border/80 rounded-full animate-pulse"
+              style={{
+                height: `${20 + Math.random() * 60}%`,
+                animationDelay: `${i * 0.05}s`,
+              }}
+            />
+          ))}
+        </div>
+
+        {/* Control buttons skeleton */}
+        <div className="flex items-center justify-center gap-2 sm:gap-4">
+          <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-full bg-border/80 border border-border/50 animate-pulse" />
+          <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-border/80 border border-border/50 animate-pulse" />
+          <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-full bg-border/80 border border-border/50 animate-pulse" />
         </div>
       </div>
     );
@@ -154,8 +194,6 @@ export function LiveCallWidget() {
                 value={volume}
                 onChange={handleVolumeChange}
                 className="w-24 h-2 bg-secondary rounded-lg appearance-none cursor-pointer accent-primary"
-                orient="vertical"
-                style={{ writingMode: "vertical-lr" }}
               />
             </div>
           </div>
