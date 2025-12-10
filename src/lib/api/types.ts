@@ -160,3 +160,12 @@ export interface AnalyticsData {
   callTypeData: Array<{ name: string; value: number; color: string }>;
 }
 
+export interface CustomVoice {
+  id: string;
+  name: string;
+  voiceId: string; // Retell voice ID
+  url: string; // Voice file URL
+  createdAt: string;
+  type: "uploaded" | "recorded";
+}
+

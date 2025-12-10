@@ -1,8 +1,8 @@
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { Header } from "@/components/dashboard/Header";
 import { Button } from "@/components/ui/button";
-import { User, Bell, Shield, CreditCard, Globe, Mic, Save, Eye, EyeOff, Trash2, Plus, Download, Copy, Check, X, Smartphone, Monitor, Tablet } from "lucide-react";
-import { useState, useEffect } from "react";
+import { User, Bell, Shield, CreditCard, Globe, Mic, Save, Eye, EyeOff, Trash2, Plus, Download, Copy, Check, X, Smartphone, Monitor, Tablet, Upload } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { apiService } from "@/lib/api/api";
 import { toast } from "sonner";
@@ -48,6 +48,21 @@ const Settings = () => {
     display_name: string;
   }>>([]);
   const [voicesLoading, setVoicesLoading] = useState(false);
+  const [customVoices, setCustomVoices] = useState<Array<{
+    id: string;
+    name: string;
+    voiceId: string;
+    url: string;
+    createdAt: string;
+    type: "uploaded" | "recorded";
+  }>>([]);
+  const [customVoicesLoading, setCustomVoicesLoading] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [newVoiceName, setNewVoiceName] = useState("");
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const [notifications, setNotifications] = useState({
     callAlerts: true,
     dailySummary: true,
@@ -130,6 +145,110 @@ const Settings = () => {
       toast.error("Failed to update voice settings");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // Custom Voice Management
+  const loadCustomVoices = async () => {
+    setCustomVoicesLoading(true);
+    try {
+      const voices = await apiService.getCustomVoices();
+      setCustomVoices(voices);
+    } catch (error) {
+      console.error("Failed to load custom voices:", error);
+      toast.error("Failed to load custom voices");
+    } finally {
+      setCustomVoicesLoading(false);
+    }
+  };
+
+  const handleVoiceFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("File size must be less than 10MB");
+      return;
+    }
+
+    try {
+      const name = newVoiceName.trim() || file.name.replace(/\.[^/.]+$/, "");
+      const result = await apiService.uploadCustomVoice(file, name);
+      toast.success("Voice uploaded successfully");
+      setNewVoiceName("");
+      await loadCustomVoices();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to upload voice file");
+    }
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        const file = new File([audioBlob], "recording.webm", { type: "audio/webm" });
+        try {
+          const name = newVoiceName.trim() || `Recording ${new Date().toLocaleString()}`;
+          await apiService.uploadCustomVoice(file, name);
+          toast.success("Voice recorded and uploaded successfully");
+          setNewVoiceName("");
+          await loadCustomVoices();
+        } catch (error: any) {
+          toast.error(error.message || "Failed to upload recording");
+        }
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordingTime(0);
+
+      intervalRef.current = setInterval(() => {
+        setRecordingTime((prev) => prev + 1);
+      }, 1000);
+    } catch (error) {
+      toast.error("Failed to access microphone");
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      setRecordingTime(0);
+    }
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const handleDeleteCustomVoice = async (voiceId: string, voiceName: string) => {
+    if (confirm(`Are you sure you want to delete "${voiceName}"?`)) {
+      try {
+        await apiService.deleteCustomVoice(voiceId);
+        toast.success("Custom voice deleted successfully");
+        await loadCustomVoices();
+      } catch (error) {
+        toast.error("Failed to delete custom voice");
+      }
     }
   };
 
@@ -389,6 +508,7 @@ const Settings = () => {
         .finally(() => {
           setVoicesLoading(false);
         });
+      loadCustomVoices();
     }
   }, [activeTab]);
 
@@ -619,6 +739,111 @@ const Settings = () => {
                     <Save className="h-4 w-4 mr-2" />
                     {isSaving ? "Saving..." : "Save Voice Settings"}
                   </Button>
+
+                  {/* Custom Cloned Voices Section */}
+                  <div className="pt-6 border-t border-border space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-sm sm:text-base font-medium text-foreground">Custom Cloned Voices</h3>
+                        <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+                          Upload or record custom voices that can be used when creating agents
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Upload/Record Section */}
+                    <div className="bg-secondary/50 rounded-lg p-4 space-y-4">
+                      <div>
+                        <Label htmlFor="voice-name" className="text-xs sm:text-sm">Voice Name (Optional)</Label>
+                        <Input
+                          id="voice-name"
+                          value={newVoiceName}
+                          onChange={(e) => setNewVoiceName(e.target.value)}
+                          placeholder="My Custom Voice"
+                          className="mt-1"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Leave empty to use file name or timestamp
+                        </p>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <input
+                          type="file"
+                          accept="audio/*"
+                          onChange={handleVoiceFileUpload}
+                          className="hidden"
+                          id="custom-voice-upload"
+                        />
+                        <label htmlFor="custom-voice-upload" className="flex-1">
+                          <Button type="button" variant="outline" className="w-full" asChild>
+                            <span>
+                              <Upload className="h-4 w-4 mr-2" />
+                              Upload Voice File
+                            </span>
+                          </Button>
+                        </label>
+                        <Button
+                          type="button"
+                          variant={isRecording ? "destructive" : "outline"}
+                          onClick={isRecording ? stopRecording : startRecording}
+                          className="flex-1"
+                        >
+                          <Mic className="h-4 w-4 mr-2" />
+                          {isRecording ? `Stop (${formatTime(recordingTime)})` : "Record Voice"}
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Supported formats: MP3, WAV, M4A (max 10MB)
+                      </p>
+                    </div>
+
+                    {/* Custom Voices List */}
+                    <div className="space-y-3">
+                      <Label className="text-xs sm:text-sm font-medium">Your Custom Voices</Label>
+                      {customVoicesLoading ? (
+                        <div className="text-center py-4 text-muted-foreground text-sm">
+                          Loading custom voices...
+                        </div>
+                      ) : customVoices.length > 0 ? (
+                        <div className="space-y-2">
+                          {customVoices.map((voice) => (
+                            <div
+                              key={voice.id}
+                              className="flex items-center justify-between p-3 bg-secondary rounded-lg"
+                            >
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-foreground truncate">{voice.name}</p>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <Badge variant="secondary" className="text-xs">
+                                    {voice.type === "uploaded" ? "Uploaded" : "Recorded"}
+                                  </Badge>
+                                  <span className="text-xs text-muted-foreground">
+                                    {new Date(voice.createdAt).toLocaleDateString()}
+                                  </span>
+                                </div>
+                                {voice.url && (
+                                  <audio src={voice.url} controls className="w-full mt-2 h-8" />
+                                )}
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeleteCustomVoice(voice.id, voice.name)}
+                                className="ml-2 text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8 text-muted-foreground text-sm bg-secondary/50 rounded-lg">
+                          No custom voices yet. Upload or record a voice to get started.
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
 

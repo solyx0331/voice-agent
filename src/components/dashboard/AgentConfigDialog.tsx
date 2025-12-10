@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Mic, Upload, X, Plus, Trash2, Clock, Mail, Globe } from "lucide-react";
+import { X, Plus, Trash2, Clock, Mail, Globe } from "lucide-react";
 import { toast } from "sonner";
 import { apiService } from "@/lib/api/api";
 import { VoiceAgent } from "@/lib/api/types";
@@ -22,12 +23,8 @@ interface AgentConfigDialogProps {
 }
 
 export function AgentConfigDialog({ open, onOpenChange, agent, onSave, isSaving = false }: AgentConfigDialogProps) {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("basic");
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingTime, setRecordingTime] = useState(0);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const [availableVoices, setAvailableVoices] = useState<Array<{
     voice_id: string;
     voice_name: string;
@@ -35,6 +32,15 @@ export function AgentConfigDialog({ open, onOpenChange, agent, onSave, isSaving 
     display_name: string;
   }>>([]);
   const [voicesLoading, setVoicesLoading] = useState(false);
+  const [customVoices, setCustomVoices] = useState<Array<{
+    id: string;
+    name: string;
+    voiceId: string;
+    url: string;
+    createdAt: string;
+    type: "uploaded" | "recorded";
+  }>>([]);
+  const [customVoicesLoading, setCustomVoicesLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -77,10 +83,13 @@ export function AgentConfigDialog({ open, onOpenChange, agent, onSave, isSaving 
     },
   });
 
-  // Fetch available voices when dialog opens
+  // Fetch available voices and custom voices when dialog opens
   useEffect(() => {
     if (open) {
       setVoicesLoading(true);
+      setCustomVoicesLoading(true);
+      
+      // Fetch generic voices from Retell
       apiService.getAvailableVoices()
         .then((voices) => {
           setAvailableVoices(voices);
@@ -102,6 +111,20 @@ export function AgentConfigDialog({ open, onOpenChange, agent, onSave, isSaving 
         })
         .finally(() => {
           setVoicesLoading(false);
+        });
+
+      // Fetch custom voices
+      apiService.getCustomVoices()
+        .then((voices) => {
+          setCustomVoices(voices);
+          console.log("Custom voices:", voices);
+        })
+        .catch((error) => {
+          console.error("Failed to fetch custom voices:", error);
+          // Don't show error toast as this is optional
+        })
+        .finally(() => {
+          setCustomVoicesLoading(false);
         });
     }
   }, [open]);
@@ -191,91 +214,6 @@ export function AgentConfigDialog({ open, onOpenChange, agent, onSave, isSaving 
       return;
     }
     await onSave(formData);
-  };
-
-  const handleVoiceFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    try {
-      const result = await apiService.uploadVoiceFile(file);
-      setFormData({
-        ...formData,
-        voice: {
-          ...formData.voice,
-          type: "custom",
-          customVoiceId: result.voiceId,
-          customVoiceUrl: result.url,
-        },
-      });
-      toast.success("Voice file uploaded successfully");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to upload voice file");
-    }
-  };
-
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
-      audioChunksRef.current = [];
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-
-      mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
-        const file = new File([audioBlob], "recording.webm", { type: "audio/webm" });
-        try {
-          const result = await apiService.uploadVoiceFile(file);
-          setFormData({
-            ...formData,
-            voice: {
-              ...formData.voice,
-              type: "custom",
-              customVoiceId: result.voiceId,
-              customVoiceUrl: result.url,
-            },
-          });
-          toast.success("Voice recorded and uploaded successfully");
-        } catch (error: any) {
-          toast.error(error.message || "Failed to upload recording");
-        }
-        stream.getTracks().forEach(track => track.stop());
-      };
-
-      mediaRecorder.start();
-      setIsRecording(true);
-      setRecordingTime(0);
-
-      intervalRef.current = setInterval(() => {
-        setRecordingTime((prev) => prev + 1);
-      }, 1000);
-    } catch (error) {
-      toast.error("Failed to access microphone");
-    }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-      setRecordingTime(0);
-    }
-  };
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
   const addFAQ = () => {
@@ -657,7 +595,7 @@ export function AgentConfigDialog({ open, onOpenChange, agent, onSave, isSaving 
                         </SelectItem>
                       ))
                     ) : (
-                      <SelectItem value="" disabled>No voices available</SelectItem>
+                      <div className="px-2 py-1.5 text-sm text-muted-foreground">No voices available</div>
                     )}
                   </SelectContent>
                 </Select>
@@ -668,39 +606,62 @@ export function AgentConfigDialog({ open, onOpenChange, agent, onSave, isSaving 
             ) : (
               <div className="space-y-4">
                 <div>
-                  <Label>Upload Voice File</Label>
-                  <div className="flex gap-2">
-                    <input
-                      type="file"
-                      accept="audio/*"
-                      onChange={handleVoiceFileUpload}
-                      className="hidden"
-                      id="voice-upload"
-                    />
-                    <label htmlFor="voice-upload">
-                      <Button type="button" variant="outline" asChild>
-                        <span>
-                          <Upload className="h-4 w-4 mr-2" />
-                          Upload File
-                        </span>
+                  <Label htmlFor="custom-voice-select">Select Custom Voice</Label>
+                  <Select
+                    value={formData.voice.customVoiceId || ""}
+                    onValueChange={(value) => {
+                      const selectedVoice = customVoices.find(v => v.voiceId === value);
+                      setFormData({
+                        ...formData,
+                        voice: {
+                          ...formData.voice,
+                          customVoiceId: selectedVoice?.voiceId || "",
+                          customVoiceUrl: selectedVoice?.url || "",
+                        },
+                      });
+                    }}
+                    disabled={customVoicesLoading}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={customVoicesLoading ? "Loading custom voices..." : "Select a custom voice"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {customVoices.length > 0 ? (
+                        customVoices.map((voice) => (
+                          <SelectItem key={voice.id} value={voice.voiceId}>
+                            {voice.name} ({voice.type === "uploaded" ? "Uploaded" : "Recorded"})
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <div className="px-2 py-1.5 text-sm text-muted-foreground">No custom voices available</div>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  {customVoicesLoading && (
+                    <p className="text-xs text-muted-foreground mt-1">Loading custom voices...</p>
+                  )}
+                  {customVoices.length === 0 && !customVoicesLoading && (
+                    <div className="mt-2 p-3 bg-secondary/50 rounded-lg border border-border">
+                      <p className="text-xs text-muted-foreground mb-2">
+                        No custom voices available. Upload or record voices in Settings → Voice Settings.
+                      </p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          onOpenChange(false);
+                          navigate("/settings?tab=voice");
+                        }}
+                      >
+                        Go to Voice Settings
                       </Button>
-                    </label>
-                    <Button
-                      type="button"
-                      variant={isRecording ? "destructive" : "outline"}
-                      onClick={isRecording ? stopRecording : startRecording}
-                    >
-                      <Mic className="h-4 w-4 mr-2" />
-                      {isRecording ? `Stop (${formatTime(recordingTime)})` : "Record Voice"}
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Upload an audio file or record your voice. Supported formats: MP3, WAV, M4A (max 10MB)
-                  </p>
+                    </div>
+                  )}
                   {formData.voice.customVoiceUrl && (
                     <div className="mt-2 p-2 bg-secondary rounded">
-                      <p className="text-xs text-muted-foreground">Voice uploaded successfully</p>
-                      <audio src={formData.voice.customVoiceUrl} controls className="w-full mt-2" />
+                      <p className="text-xs text-muted-foreground mb-2">Selected voice preview:</p>
+                      <audio src={formData.voice.customVoiceUrl} controls className="w-full" />
                     </div>
                   )}
                 </div>

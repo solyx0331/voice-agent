@@ -527,6 +527,61 @@ class ApiService {
       display_name: string;
     }>>("/voices");
   }
+
+  // Custom Voices Management
+  async getCustomVoices(): Promise<Array<{
+    id: string;
+    name: string;
+    voiceId: string;
+    url: string;
+    createdAt: string;
+    type: "uploaded" | "recorded";
+  }>> {
+    return this.request<Array<{
+      id: string;
+      name: string;
+      voiceId: string;
+      url: string;
+      createdAt: string;
+      type: "uploaded" | "recorded";
+    }>>("/voices/custom");
+  }
+
+  async uploadCustomVoice(file: File, name?: string): Promise<{
+    id: string;
+    name: string;
+    voiceId: string;
+    url: string;
+    createdAt: string;
+    type: "uploaded";
+  }> {
+    const formData = new FormData();
+    formData.append("file", file);
+    if (name) {
+      formData.append("name", name);
+    }
+
+    const response = await fetch(`${this.baseUrl}/voices/custom`, {
+      method: "POST",
+      body: formData,
+      headers: {
+        "ngrok-skip-browser-warning": "true",
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: response.statusText }));
+      throw new Error(error.message || `HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+  }
+
+  async deleteCustomVoice(voiceId: string): Promise<void> {
+    await this.request(`/voices/custom/${voiceId}`, {
+      method: "DELETE",
+    });
+  }
 }
 
 export const apiService = new ApiService();
