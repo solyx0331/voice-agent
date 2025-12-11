@@ -4,10 +4,11 @@ import { StatsCard } from "@/components/dashboard/StatsCard";
 import { VoiceAgentCard } from "@/components/dashboard/VoiceAgentCard";
 import { RecentCallsTable } from "@/components/dashboard/RecentCallsTable";
 import { LiveCallWidget } from "@/components/dashboard/LiveCallWidget";
-import { Phone, Mic, Clock, TrendingUp } from "lucide-react";
+import { Phone, Mic, Clock, TrendingUp, Plus } from "lucide-react";
 import { useDashboardStats, useVoiceAgents } from "@/hooks/useDashboard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -63,13 +64,15 @@ const Index = () => {
                   View All →
                 </button>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                {agentsLoading ? (
-                  Array.from({ length: 4 }).map((_, i) => (
+              {agentsLoading ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  {Array.from({ length: 4 }).map((_, i) => (
                     <Skeleton key={i} className="h-36 sm:h-40 rounded-xl" />
-                  ))
-                ) : (
-                  agents?.slice(0, 4).map((agent, index) => (
+                  ))}
+                </div>
+              ) : agents && agents.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  {agents.slice(0, 4).map((agent, index) => (
                     <div key={agent.id} className="h-full" style={{ animationDelay: `${index * 0.15}s` }}>
                       <VoiceAgentCard 
                         id={agent.id}
@@ -81,9 +84,25 @@ const Index = () => {
                         phoneNumber={agent.phoneNumber}
                       />
                     </div>
-                  ))
-                )}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="glass-card rounded-xl p-8 sm:p-12 text-center border-border">
+                  <div className="flex flex-col items-center justify-center space-y-4">
+                    <div className="h-16 w-16 rounded-full bg-secondary flex items-center justify-center">
+                      <Mic className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                    <div className="space-y-2">
+                      <h3 className="text-base sm:text-lg font-semibold text-foreground">
+                        No Voice Agents Yet
+                      </h3>
+                      <p className="text-sm sm:text-base text-muted-foreground max-w-md">
+                        Get started by creating your first voice agent. Set up AI-powered voice assistants to handle calls automatically.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Live Call Widget */}

@@ -2,7 +2,7 @@ import { Sidebar } from "@/components/dashboard/Sidebar";
 import { Header } from "@/components/dashboard/Header";
 import { VoiceAgentCard } from "@/components/dashboard/VoiceAgentCard";
 import { Button } from "@/components/ui/button";
-import { Search, Filter, X } from "lucide-react";
+import { Search, Filter, X, Plus, Mic } from "lucide-react";
 import { useVoiceAgents } from "@/hooks/useDashboard";
 import { useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -196,9 +196,27 @@ const VoiceAgents = () => {
                   />
                 </div>
               ))
+            ) : agents && agents.length === 0 ? (
+              <div className="col-span-full">
+                <div className="glass-card rounded-xl p-8 sm:p-12 text-center border-border">
+                  <div className="flex flex-col items-center justify-center space-y-4">
+                    <div className="h-16 w-16 rounded-full bg-secondary flex items-center justify-center">
+                      <Mic className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                    <div className="space-y-2">
+                      <h3 className="text-base sm:text-lg font-semibold text-foreground">
+                        No Voice Agents Yet
+                      </h3>
+                      <p className="text-sm sm:text-base text-muted-foreground max-w-md">
+                        Create your first voice agent to start handling calls automatically with AI-powered voice assistants.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             ) : (
               <div className="col-span-full text-center py-8 sm:py-12 text-muted-foreground text-sm sm:text-base">
-                No agents found
+                No agents found matching your filters
               </div>
             )}
           </div>
