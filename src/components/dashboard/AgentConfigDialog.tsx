@@ -660,13 +660,6 @@ export function AgentConfigDialog({ open, onOpenChange, agent, onSave, isSaving 
                   Add FAQ
                 </Button>
               </div>
-            <div className="flex items-center justify-between">
-              <Label>Frequently Asked Questions</Label>
-              <Button type="button" variant="outline" size="sm" onClick={addFAQ}>
-                <Plus className="h-4 w-4 mr-1" />
-                Add FAQ
-              </Button>
-            </div>
             {formData.faqs.map((faq, index) => (
               <div key={index} className="p-4 bg-secondary rounded-lg space-y-2">
                 <div className="flex items-center justify-between">
@@ -747,58 +740,9 @@ export function AgentConfigDialog({ open, onOpenChange, agent, onSave, isSaving 
                   />
                 </div>
               ))}
-              {formData.faqs.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-8">No FAQs added yet. Click "Add FAQ" to get started.</p>
+              {formData.intents.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-8">No intents added yet. Click "Add Intent" to get started.</p>
               )}
-
-              <div className="pt-4 border-t">
-                <div className="flex items-center justify-between mb-2">
-                  <Label>Intents</Label>
-                  <Button type="button" variant="outline" size="sm" onClick={addIntent}>
-                    <Plus className="h-4 w-4 mr-1" />
-                    Add Intent
-                  </Button>
-                </div>
-                {formData.intents.map((intent, index) => (
-                  <div key={index} className="p-4 bg-secondary rounded-lg space-y-2 mb-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">Intent #{index + 1}</span>
-                      <Button type="button" variant="ghost" size="sm" onClick={() => removeIntent(index)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <Input
-                      value={intent.name}
-                      onChange={(e) => {
-                        const newIntents = [...formData.intents];
-                        newIntents[index] = { ...newIntents[index], name: e.target.value };
-                        setFormData({ ...formData, intents: newIntents });
-                      }}
-                      placeholder="Intent name (e.g., 'booking', 'support')"
-                    />
-                    <Textarea
-                      value={intent.prompt}
-                      onChange={(e) => {
-                        const newIntents = [...formData.intents];
-                        newIntents[index] = { ...newIntents[index], prompt: e.target.value };
-                        setFormData({ ...formData, intents: newIntents });
-                      }}
-                      placeholder="Prompt (e.g., 'Are you booking an appointment?')"
-                      rows={2}
-                    />
-                    <Textarea
-                      value={intent.response || ""}
-                      onChange={(e) => {
-                        const newIntents = [...formData.intents];
-                        newIntents[index] = { ...newIntents[index], response: e.target.value };
-                        setFormData({ ...formData, intents: newIntents });
-                      }}
-                      placeholder="Response (optional)"
-                      rows={2}
-                    />
-                  </div>
-                ))}
-              </div>
             </div>
           </div>
         </div>
