@@ -41,8 +41,19 @@ export function Header() {
       toast.success("Agent created successfully");
       setIsAgentDialogOpen(false);
       navigate("/voice-agents");
-    } catch (error) {
-      toast.error("Failed to create agent");
+    } catch (error: any) {
+      // Extract detailed error message from API response
+      const errorMessage = error?.response?.data?.message || error?.message || "Failed to create agent";
+      
+      // Show error toast that doesn't auto-dismiss
+      toast.error("Failed to create agent", {
+        description: errorMessage,
+        duration: Infinity, // Never auto-dismiss - user must close manually
+        cancel: {
+          label: "Dismiss",
+          onClick: () => {},
+        },
+      });
     }
   };
 

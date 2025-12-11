@@ -50,12 +50,18 @@ export interface VoiceAgent {
   phoneNumber?: string; // Twilio phone number in E.164 format (e.g., +61412345678)
   twilioPhoneNumberSid?: string; // Twilio Phone Number SID
   webhookUrl?: string; // Webhook URL configured for the phone number
+  // Retell IDs
+  retellAgentId?: string; // Retell Agent ID
+  retellLlmId?: string; // Retell LLM ID
   // Enhanced configuration
   voice?: {
     type: "generic" | "custom";
     genericVoice?: string; // e.g., "ElevenLabs - Aria"
     customVoiceId?: string; // Retell voice ID
     customVoiceUrl?: string; // Uploaded voice file URL
+    temperature?: number; // Voice stability (0-2)
+    speed?: number; // Speech speed (0.5-2)
+    volume?: number; // Volume level (0-2)
   };
   greetingScript?: string;
   faqs?: Array<{

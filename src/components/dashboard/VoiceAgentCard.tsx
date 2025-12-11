@@ -38,7 +38,8 @@ export function VoiceAgentCard({ id, name, description, status, calls, avgDurati
   
   const updateAgent = useUpdateAgent();
   const deleteAgent = useDeleteAgent();
-  const { data: agentDetails, isLoading: detailsLoading } = useAgentDetails(isDetailsOpen ? id : null);
+  // Load agent details when either edit or details dialog is open
+  const { data: agentDetails, isLoading: detailsLoading } = useAgentDetails((isEditOpen || isDetailsOpen) ? id : null);
 
   // Load recent calls for this agent
   useEffect(() => {
@@ -64,8 +65,16 @@ export function VoiceAgentCard({ id, name, description, status, calls, avgDurati
       });
       toast.success("Agent updated successfully");
       setIsEditOpen(false);
-    } catch (error) {
-      toast.error("Failed to update agent");
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || error?.message || "Failed to update agent";
+      toast.error("Failed to update agent", {
+        description: errorMessage,
+        duration: Infinity, // Never auto-dismiss - user must close manually
+        cancel: {
+          label: "Dismiss",
+          onClick: () => {},
+        },
+      });
     }
   };
 
@@ -157,49 +166,186 @@ export function VoiceAgentCard({ id, name, description, status, calls, avgDurati
               <div className="py-8 text-center text-muted-foreground">Loading details...</div>
             ) : agentDetails ? (
               <div className="space-y-6 py-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-sm text-muted-foreground">Name</Label>
-                    <p className="font-medium">{agentDetails.name}</p>
-                  </div>
-                  <div>
-                    <Label className="text-sm text-muted-foreground">Status</Label>
-                    <p className="font-medium capitalize">{agentDetails.status}</p>
-                  </div>
-                  <div>
-                    <Label className="text-sm text-muted-foreground">Description</Label>
-                    <p className="font-medium">{agentDetails.description}</p>
-                  </div>
-                  <div>
-                    <Label className="text-sm text-muted-foreground">Total Calls</Label>
-                    <p className="font-medium">{agentDetails.totalCalls}</p>
-                  </div>
-                  <div>
-                    <Label className="text-sm text-muted-foreground">Average Duration</Label>
-                    <p className="font-medium">{agentDetails.avgDuration}</p>
-                  </div>
-                  <div>
-                    <Label className="text-sm text-muted-foreground">Success Rate</Label>
-                    <p className="font-medium">{agentDetails.successRate}%</p>
-                  </div>
-                  <div>
-                    <Label className="text-sm text-muted-foreground">Created At</Label>
-                    <p className="font-medium">{agentDetails.createdAt}</p>
-                  </div>
-                  <div>
-                    <Label className="text-sm text-muted-foreground">Last Active</Label>
-                    <p className="font-medium">{agentDetails.lastActive}</p>
-                  </div>
-                  {agentDetails.phoneNumber && (
-                    <div className="col-span-2">
-                      <Label className="text-sm text-muted-foreground">Phone Number</Label>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Phone className="h-4 w-4 text-muted-foreground" />
-                        <p className="font-medium text-foreground">{agentDetails.phoneNumber}</p>
-                      </div>
+                {/* Basic Information */}
+                <div className="space-y-4">
+                  <h3 className="text-base font-semibold text-foreground">Basic Information</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm text-muted-foreground">Name</Label>
+                      <p className="font-medium">{agentDetails.name}</p>
                     </div>
-                  )}
+                    <div>
+                      <Label className="text-sm text-muted-foreground">Status</Label>
+                      <p className="font-medium capitalize">{agentDetails.status}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <Label className="text-sm text-muted-foreground">Description</Label>
+                      <p className="font-medium">{agentDetails.description}</p>
+                    </div>
+                    {agentDetails.phoneNumber && (
+                      <div className="col-span-2">
+                        <Label className="text-sm text-muted-foreground">Phone Number</Label>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Phone className="h-4 w-4 text-muted-foreground" />
+                          <p className="font-medium text-foreground">{agentDetails.phoneNumber}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
+
+                {/* Statistics */}
+                <div className="pt-4 border-t border-border space-y-4">
+                  <h3 className="text-base font-semibold text-foreground">Statistics</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm text-muted-foreground">Total Calls</Label>
+                      <p className="font-medium">{agentDetails.totalCalls || 0}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm text-muted-foreground">Average Duration</Label>
+                      <p className="font-medium">{agentDetails.avgDuration || "0:00"}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm text-muted-foreground">Success Rate</Label>
+                      <p className="font-medium">{agentDetails.successRate || 0}%</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm text-muted-foreground">Created At</Label>
+                      <p className="font-medium">{agentDetails.createdAt || "N/A"}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm text-muted-foreground">Last Active</Label>
+                      <p className="font-medium">{agentDetails.lastActive || "N/A"}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Voice Configuration */}
+                {agentDetails.voice && (
+                  <div className="pt-4 border-t border-border space-y-4">
+                    <h3 className="text-base font-semibold text-foreground">Voice Configuration</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-sm text-muted-foreground">Voice Type</Label>
+                        <p className="font-medium capitalize">{agentDetails.voice.type || "generic"}</p>
+                      </div>
+                      {agentDetails.voice.type === "generic" && agentDetails.voice.genericVoice && (
+                        <div>
+                          <Label className="text-sm text-muted-foreground">Generic Voice</Label>
+                          <p className="font-medium">{agentDetails.voice.genericVoice}</p>
+                        </div>
+                      )}
+                      {agentDetails.voice.type === "custom" && agentDetails.voice.customVoiceId && (
+                        <div>
+                          <Label className="text-sm text-muted-foreground">Custom Voice ID</Label>
+                          <p className="font-medium text-xs font-mono">{agentDetails.voice.customVoiceId}</p>
+                        </div>
+                      )}
+                      {(agentDetails.voice as any)?.temperature !== undefined && (
+                        <div>
+                          <Label className="text-sm text-muted-foreground">Voice Temperature</Label>
+                          <p className="font-medium">{(agentDetails.voice as any).temperature}</p>
+                        </div>
+                      )}
+                      {(agentDetails.voice as any)?.speed !== undefined && (
+                        <div>
+                          <Label className="text-sm text-muted-foreground">Voice Speed</Label>
+                          <p className="font-medium">{(agentDetails.voice as any).speed}</p>
+                        </div>
+                      )}
+                      {(agentDetails.voice as any)?.volume !== undefined && (
+                        <div>
+                          <Label className="text-sm text-muted-foreground">Volume</Label>
+                          <p className="font-medium">{(agentDetails.voice as any).volume}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Base Logic */}
+                {agentDetails.baseLogic && (
+                  <div className="pt-4 border-t border-border space-y-4">
+                    <h3 className="text-base font-semibold text-foreground">Base Receptionist Logic</h3>
+                    {agentDetails.baseLogic.greetingMessage && (
+                      <div>
+                        <Label className="text-sm text-muted-foreground">Greeting Message</Label>
+                        <p className="font-medium text-sm mt-1">{agentDetails.baseLogic.greetingMessage}</p>
+                      </div>
+                    )}
+                    {agentDetails.baseLogic.primaryIntentPrompts && agentDetails.baseLogic.primaryIntentPrompts.length > 0 && (
+                      <div>
+                        <Label className="text-sm text-muted-foreground">Primary Intent Prompts</Label>
+                        <ul className="list-disc list-inside mt-1 space-y-1">
+                          {agentDetails.baseLogic.primaryIntentPrompts.map((prompt, idx) => (
+                            <li key={idx} className="text-sm font-medium">{prompt}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {agentDetails.baseLogic.leadCaptureQuestions && agentDetails.baseLogic.leadCaptureQuestions.length > 0 && (
+                      <div>
+                        <Label className="text-sm text-muted-foreground">Lead Capture Questions</Label>
+                        <ul className="list-disc list-inside mt-1 space-y-1">
+                          {agentDetails.baseLogic.leadCaptureQuestions.map((q, idx) => (
+                            <li key={idx} className="text-sm font-medium">{q.question}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* FAQs */}
+                {agentDetails.faqs && agentDetails.faqs.length > 0 && (
+                  <div className="pt-4 border-t border-border space-y-4">
+                    <h3 className="text-base font-semibold text-foreground">Frequently Asked Questions</h3>
+                    <div className="space-y-3">
+                      {agentDetails.faqs.map((faq, idx) => (
+                        <div key={idx} className="p-3 bg-secondary rounded-lg">
+                          <p className="font-medium text-sm mb-1">Q: {faq.question}</p>
+                          <p className="text-sm text-muted-foreground">A: {faq.answer}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Intents */}
+                {agentDetails.intents && agentDetails.intents.length > 0 && (
+                  <div className="pt-4 border-t border-border space-y-4">
+                    <h3 className="text-base font-semibold text-foreground">Intents</h3>
+                    <div className="space-y-3">
+                      {agentDetails.intents.map((intent, idx) => (
+                        <div key={idx} className="p-3 bg-secondary rounded-lg">
+                          <p className="font-medium text-sm mb-1">{intent.name}</p>
+                          <p className="text-sm text-muted-foreground mb-2">Prompt: {intent.prompt}</p>
+                          {intent.response && (
+                            <p className="text-sm text-muted-foreground">Response: {intent.response}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Lead Capture */}
+                {agentDetails.leadCapture && agentDetails.leadCapture.fields && agentDetails.leadCapture.fields.length > 0 && (
+                  <div className="pt-4 border-t border-border space-y-4">
+                    <h3 className="text-base font-semibold text-foreground">Lead Capture Fields</h3>
+                    <div className="space-y-2">
+                      {agentDetails.leadCapture.fields.map((field, idx) => (
+                        <div key={idx} className="p-2 bg-secondary rounded text-sm">
+                          <span className="font-medium">{field.name}</span>
+                          <span className="text-muted-foreground ml-2">({field.type})</span>
+                          {field.required && <Badge variant="secondary" className="ml-2 text-xs">Required</Badge>}
+                          <p className="text-xs text-muted-foreground mt-1">{field.question}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Recent Activity Section */}
                 <div className="pt-4 border-t border-border">

@@ -355,8 +355,12 @@ export function AgentConfigDialog({ open, onOpenChange, agent, onSave, isSaving 
           <DialogTitle>{agent ? "Edit Voice Agent" : "Create New Voice Agent"}</DialogTitle>
         </DialogHeader>
 
-        {/* Single Form - No Tabs */}
-        <div className="space-y-6">
+        {/* Show loading state if editing and agent data is not yet loaded */}
+        {agent && !agent.id ? (
+          <div className="py-8 text-center text-muted-foreground">Loading agent details...</div>
+        ) : (
+          /* Single Form - No Tabs */
+          <div className="space-y-6">
             <div>
               <Label htmlFor="agent-name">Agent Name *</Label>
               <Input
@@ -795,14 +799,14 @@ export function AgentConfigDialog({ open, onOpenChange, agent, onSave, isSaving 
               </div>
             </div>
           </div>
-
         </div>
+        )}
 
         <div className="flex justify-end gap-2 pt-4 border-t">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={isSaving || !formData.name || !formData.description}>
+          <Button onClick={handleSave} disabled={isSaving || !formData.name || !formData.description || (agent && !agent.id)}>
             {isSaving ? "Saving..." : agent ? "Save Changes" : "Create Agent"}
           </Button>
         </div>
