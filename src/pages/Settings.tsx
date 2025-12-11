@@ -37,7 +37,7 @@ const Settings = () => {
     timezone: "UTC-8 (Pacific Time)",
   });
   const [voiceSettings, setVoiceSettings] = useState({
-    voiceModel: "ElevenLabs - Anthony",
+    voiceModel: "", // Will be set from available voices (preferring Australian)
     speechSpeed: 1,
     apiKey: "sk-xxxxxxxxxxxxxxxx",
   });
@@ -46,6 +46,7 @@ const Settings = () => {
     voice_name: string;
     provider: string;
     display_name: string;
+    isAustralian?: boolean;
   }>>([]);
   const [voicesLoading, setVoicesLoading] = useState(false);
   const [customVoices, setCustomVoices] = useState<Array<{
@@ -494,10 +495,12 @@ const Settings = () => {
         .then((voices) => {
           setAvailableVoices(voices);
           // Set default voice if none selected and voices are available
-          if (voices.length > 0 && !voiceSettings.voiceModel) {
+          // Only use Australian voices
+          const australianVoices = voices.filter((v: any) => v.isAustralian);
+          if (australianVoices.length > 0 && !voiceSettings.voiceModel) {
             setVoiceSettings(prev => ({
               ...prev,
-              voiceModel: voices[0].display_name,
+              voiceModel: australianVoices[0].display_name,
             }));
           }
         })
@@ -692,14 +695,14 @@ const Settings = () => {
                     >
                       {voicesLoading ? (
                         <option>Loading voices...</option>
-                      ) : availableVoices.length > 0 ? (
-                        availableVoices.map((voice) => (
+                      ) : availableVoices.filter((voice: any) => voice.isAustralian).length > 0 ? (
+                        availableVoices.filter((voice: any) => voice.isAustralian).map((voice) => (
                           <option key={voice.voice_id} value={voice.display_name}>
                             {voice.display_name}
                           </option>
                         ))
                       ) : (
-                        <option>No voices available</option>
+                        <option>No Australian voices available</option>
                       )}
                     </select>
                     {voicesLoading && (

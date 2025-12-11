@@ -522,12 +522,14 @@ class ApiService {
     voice_name: string;
     provider: string;
     display_name: string;
+    isAustralian?: boolean;
   }>> {
     return this.request<Array<{
       voice_id: string;
       voice_name: string;
       provider: string;
       display_name: string;
+      isAustralian?: boolean;
     }>>("/voices");
   }
 

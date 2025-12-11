@@ -46,7 +46,7 @@ export function AgentConfigDialog({ open, onOpenChange, agent, onSave, isSaving 
     status: "inactive" as "active" | "inactive" | "busy",
     voice: {
       type: "generic" as "generic" | "custom",
-      genericVoice: "ElevenLabs - Aria",
+      genericVoice: "", // Will be set from available voices (preferring Australian)
       customVoiceId: "",
       customVoiceUrl: "",
     },
@@ -93,12 +93,14 @@ export function AgentConfigDialog({ open, onOpenChange, agent, onSave, isSaving 
           setAvailableVoices(voices);
           console.log("Available voices:", voices);
           // Set default voice if none selected and voices are available
-          if (voices.length > 0 && !formData.voice.genericVoice) {
+          // Only use Australian voices
+          const australianVoices = voices.filter((v: any) => v.isAustralian);
+          if (australianVoices.length > 0 && !formData.voice.genericVoice) {
             setFormData(prev => ({
               ...prev,
               voice: {
                 ...prev.voice,
-                genericVoice: voices[0].display_name,
+                genericVoice: australianVoices[0].display_name,
               },
             }));
           }
@@ -135,7 +137,7 @@ export function AgentConfigDialog({ open, onOpenChange, agent, onSave, isSaving 
         status: agent.status || "inactive",
         voice: {
           type: agent.voice?.type || "generic",
-          genericVoice: agent.voice?.genericVoice || (availableVoices.length > 0 ? availableVoices[0].display_name : "ElevenLabs - Aria"),
+          genericVoice: agent.voice?.genericVoice || (availableVoices.filter((v: any) => v.isAustralian).length > 0 ? availableVoices.filter((v: any) => v.isAustralian)[0].display_name : ""),
           customVoiceId: agent.voice?.customVoiceId || "",
           customVoiceUrl: agent.voice?.customVoiceUrl || "",
         },
@@ -175,7 +177,7 @@ export function AgentConfigDialog({ open, onOpenChange, agent, onSave, isSaving 
         status: "inactive",
         voice: {
           type: "generic",
-          genericVoice: availableVoices.length > 0 ? availableVoices[0].display_name : "ElevenLabs - Aria",
+          genericVoice: availableVoices.filter((v: any) => v.isAustralian).length > 0 ? availableVoices.filter((v: any) => v.isAustralian)[0].display_name : "",
           customVoiceId: "",
           customVoiceUrl: "",
         },
@@ -433,14 +435,14 @@ export function AgentConfigDialog({ open, onOpenChange, agent, onSave, isSaving 
                       <SelectValue placeholder={voicesLoading ? "Loading voices..." : "Select a voice"} />
                     </SelectTrigger>
                     <SelectContent>
-                      {availableVoices.length > 0 ? (
-                        availableVoices.map((voice) => (
+                      {availableVoices.filter((voice: any) => voice.isAustralian).length > 0 ? (
+                        availableVoices.filter((voice: any) => voice.isAustralian).map((voice) => (
                           <SelectItem key={voice.voice_id} value={voice.display_name}>
                             {voice.display_name}
                           </SelectItem>
                         ))
                       ) : (
-                        <div className="px-2 py-1.5 text-sm text-muted-foreground">No voices available</div>
+                        <div className="px-2 py-1.5 text-sm text-muted-foreground">No Australian voices available</div>
                       )}
                     </SelectContent>
                   </Select>
