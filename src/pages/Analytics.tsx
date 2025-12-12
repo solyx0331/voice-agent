@@ -13,10 +13,34 @@ const Analytics = () => {
   const { data: analyticsData, isLoading } = useAnalytics();
 
   const stats = analyticsData ? [
-    { title: "Total Calls", value: analyticsData.callVolume.reduce((sum, d) => sum + d.calls, 0).toLocaleString(), change: "+18% from last month", changeType: "positive" as const, icon: Phone },
-    { title: "Avg. Handle Time", value: "3:45", change: "-12% improvement", changeType: "positive" as const, icon: Clock },
-    { title: "Resolution Rate", value: "92.4%", change: "+5.2% this month", changeType: "positive" as const, icon: TrendingUp },
-    { title: "Unique Contacts", value: "3,421", change: "+234 new this week", changeType: "positive" as const, icon: Users },
+    { 
+      title: "Total Calls", 
+      value: analyticsData.callVolume.reduce((sum, d) => sum + d.calls, 0).toLocaleString(), 
+      change: `${analyticsData.totalCallsChange !== undefined && analyticsData.totalCallsChange > 0 ? '+' : ''}${analyticsData.totalCallsChange?.toFixed(1) || 0}% from last month`, 
+      changeType: (analyticsData.totalCallsChange !== undefined && analyticsData.totalCallsChange > 0 ? "positive" : analyticsData.totalCallsChange !== undefined && analyticsData.totalCallsChange < 0 ? "negative" : "neutral") as const, 
+      icon: Phone 
+    },
+    { 
+      title: "Avg. Handle Time", 
+      value: analyticsData.avgHandleTime || "0:00", 
+      change: `${analyticsData.avgHandleTimeChange !== undefined && analyticsData.avgHandleTimeChange < 0 ? '' : analyticsData.avgHandleTimeChange !== undefined && analyticsData.avgHandleTimeChange > 0 ? '+' : ''}${analyticsData.avgHandleTimeChange?.toFixed(1) || 0}% ${analyticsData.avgHandleTimeChange !== undefined && analyticsData.avgHandleTimeChange < 0 ? 'improvement' : 'change'}`, 
+      changeType: (analyticsData.avgHandleTimeChange !== undefined && analyticsData.avgHandleTimeChange < 0 ? "positive" : analyticsData.avgHandleTimeChange !== undefined && analyticsData.avgHandleTimeChange > 0 ? "negative" : "neutral") as const, 
+      icon: Clock 
+    },
+    { 
+      title: "Resolution Rate", 
+      value: `${analyticsData.resolutionRate?.toFixed(1) || 0}%`, 
+      change: `${analyticsData.resolutionRateChange !== undefined && analyticsData.resolutionRateChange > 0 ? '+' : ''}${analyticsData.resolutionRateChange?.toFixed(1) || 0}% this month`, 
+      changeType: (analyticsData.resolutionRateChange !== undefined && analyticsData.resolutionRateChange > 0 ? "positive" : analyticsData.resolutionRateChange !== undefined && analyticsData.resolutionRateChange < 0 ? "negative" : "neutral") as const, 
+      icon: TrendingUp 
+    },
+    { 
+      title: "Unique Contacts", 
+      value: (analyticsData.uniqueContacts || 0).toLocaleString(), 
+      change: `${analyticsData.uniqueContactsChange !== undefined && analyticsData.uniqueContactsChange > 0 ? '+' : ''}${analyticsData.uniqueContactsChange || 0} new this week`, 
+      changeType: (analyticsData.uniqueContactsChange !== undefined && analyticsData.uniqueContactsChange > 0 ? "positive" : analyticsData.uniqueContactsChange !== undefined && analyticsData.uniqueContactsChange < 0 ? "negative" : "neutral") as const, 
+      icon: Users 
+    },
   ] : [];
 
   return (

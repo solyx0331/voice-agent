@@ -131,6 +131,7 @@ export interface Contact {
 export interface DashboardStats {
   totalCallsToday: number;
   activeAgents: number;
+  activeCallsCount?: number;
   avgCallDuration: string;
   successRate: number;
   callsChange: number;
@@ -163,6 +164,13 @@ export interface AnalyticsData {
   hourlyData: Array<{ hour: string; calls: number }>;
   agentPerformance: Array<{ name: string; calls: number; success: number }>;
   callTypeData: Array<{ name: string; value: number; color: string }>;
+  avgHandleTime?: string;
+  avgHandleTimeChange?: number;
+  resolutionRate?: number;
+  resolutionRateChange?: number;
+  uniqueContacts?: number;
+  uniqueContactsChange?: number;
+  totalCallsChange?: number;
 }
 
 export interface CustomVoice {

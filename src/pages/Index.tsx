@@ -16,10 +16,10 @@ const Index = () => {
   const { data: agents, isLoading: agentsLoading } = useVoiceAgents();
 
   const statsData = stats ? [
-    { title: "Total Calls Today", value: stats.totalCallsToday.toString(), change: `${stats.callsChange > 0 ? '+' : ''}${stats.callsChange}% from yesterday`, changeType: (stats.callsChange > 0 ? "positive" : stats.callsChange < 0 ? "negative" : "neutral") as "positive" | "negative" | "neutral", icon: Phone },
-    { title: "Active Agents", value: stats.activeAgents.toString(), change: "3 currently on call", changeType: "neutral" as "positive" | "negative" | "neutral", icon: Mic },
-    { title: "Avg. Call Duration", value: stats.avgCallDuration, change: `${stats.durationChange > 0 ? '+' : ''}${stats.durationChange}% from last week`, changeType: (stats.durationChange > 0 ? "positive" : "negative") as "positive" | "negative" | "neutral", icon: Clock },
-    { title: "Success Rate", value: `${stats.successRate}%`, change: `${stats.successRateChange > 0 ? '+' : ''}${stats.successRateChange}% this month`, changeType: (stats.successRateChange > 0 ? "positive" : "negative") as "positive" | "negative" | "neutral", icon: TrendingUp },
+    { title: "Total Calls Today", value: stats.totalCallsToday.toString(), change: `${stats.callsChange > 0 ? '+' : ''}${stats.callsChange.toFixed(1)}% from yesterday`, changeType: (stats.callsChange > 0 ? "positive" : stats.callsChange < 0 ? "negative" : "neutral") as "positive" | "negative" | "neutral", icon: Phone },
+    { title: "Active Agents", value: stats.activeAgents.toString(), change: `${stats.activeCallsCount || 0} currently on call`, changeType: "neutral" as "positive" | "negative" | "neutral", icon: Mic },
+    { title: "Avg. Call Duration", value: stats.avgCallDuration, change: `${stats.durationChange > 0 ? '+' : ''}${stats.durationChange.toFixed(1)}% from last week`, changeType: (stats.durationChange > 0 ? "positive" : "negative") as "positive" | "negative" | "neutral", icon: Clock },
+    { title: "Success Rate", value: `${stats.successRate.toFixed(1)}%`, change: `${stats.successRateChange > 0 ? '+' : ''}${stats.successRateChange.toFixed(1)}% this month`, changeType: (stats.successRateChange > 0 ? "positive" : "negative") as "positive" | "negative" | "neutral", icon: TrendingUp },
   ] : [];
 
   return (
