@@ -75,18 +75,25 @@ const CallHistory = () => {
   const uniqueAgents = Array.from(new Set(calls?.map(c => c.agent) || []));
 
   const handleViewDetails = (call: Call) => {
+    // Stop any currently playing audio from table row
+    if (audioRef.current && playingRecordingId === call.id) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+    
     setSelectedCall(call);
     setIsDetailModalOpen(true);
+    
     // If viewing a different call, reset the recording state
-    // But if it's the same call that's already playing, preserve the state
-    if (call.recording && playingRecordingId !== call.id && selectedCall?.id !== call.id) {
+    if (call.recording && selectedCall?.id && selectedCall.id !== call.id) {
       setPlayingRecordingId(null);
-      // Only clear recordingUrl if we're viewing a different call
-      // This allows the player to stay visible when reopening the same call
-      if (selectedCall?.id && selectedCall.id !== call.id) {
-        setRecordingUrl(null);
-      }
+      setRecordingUrl(null);
+    } else if (call.recording && playingRecordingId === call.id) {
+      // If the same call is playing, stop it and don't auto-play in modal
+      setPlayingRecordingId(null);
+      // Keep recordingUrl so player is available, but don't auto-play
     }
+    
     // If the call has a recordingUrl, set it so the player is available
     if (call.recordingUrl && !recordingUrl) {
       setRecordingUrl(call.recordingUrl);
@@ -111,10 +118,19 @@ const CallHistory = () => {
         return;
       }
 
-      // Stop any currently playing recording
+      // Stop any currently playing recording (both hidden and modal audio)
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current.currentTime = 0;
+      }
+      if (modalAudioRef.current) {
+        modalAudioRef.current.pause();
+        modalAudioRef.current.currentTime = 0;
+      }
+      
+      // Reset any previous playing state
+      if (playingRecordingId && playingRecordingId !== callId) {
+        setPlayingRecordingId(null);
       }
 
       let recordingUrlToUse: string | null = null;
@@ -145,14 +161,20 @@ const CallHistory = () => {
       setRecordingUrl(recordingUrlToUse);
       setPlayingRecordingId(callId);
       
+      // Determine which audio element to use based on context
+      // If modal is open and this is the selected call, use modal audio
+      // Otherwise, use hidden audio for table row playback
+      const shouldUseModalAudio = isDetailModalOpen && selectedCall?.id === callId;
+      const audioElement = shouldUseModalAudio ? modalAudioRef.current : audioRef.current;
+      
       // Play the audio
-      if (audioRef.current) {
-        audioRef.current.src = recordingUrlToUse;
-        audioRef.current.load(); // Load the audio source
+      if (audioElement) {
+        audioElement.src = recordingUrlToUse;
+        audioElement.load(); // Load the audio source
         
         // Try to play with better error handling
         try {
-          await audioRef.current.play();
+          await audioElement.play();
         } catch (playError: any) {
           console.error("Audio play error:", playError);
           
@@ -792,11 +814,16 @@ const CallHistory = () => {
                               ref={modalAudioRef}
                               controls
                               className="w-full"
-                              autoPlay={playingRecordingId === selectedCall.id}
+                              autoPlay={false}
                               src={recordingUrl}
                               onPlay={() => {
                                 isSeekingRef.current = false;
                                 setPlayingRecordingId(selectedCall.id);
+                                // Stop hidden audio if it's playing
+                                if (audioRef.current && !audioRef.current.paused) {
+                                  audioRef.current.pause();
+                                  audioRef.current.currentTime = 0;
+                                }
                               }}
                               onPause={() => {
                                 // Don't reset state during seeking
