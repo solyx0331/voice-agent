@@ -83,27 +83,11 @@ const CallHistory = () => {
 
   const handlePlayRecording = async (callId: string, call?: Call) => {
     try {
-      // If call object is provided and has recordingUrl, use it directly
-      if (call?.recordingUrl) {
-        setRecordingUrl(call.recordingUrl);
-        setPlayingRecordingId(callId);
-        
-        // Play the audio
-        if (audioRef.current) {
-          audioRef.current.src = call.recordingUrl;
-          audioRef.current.play().catch((error) => {
-            toast.error("Failed to play recording");
-            setPlayingRecordingId(null);
-          });
-        }
-        return;
-      }
-
-      // Otherwise, use existing logic
+      // If already playing this recording, pause it
       if (playingRecordingId === callId && audioRef.current) {
-        // Pause if already playing
         audioRef.current.pause();
         setPlayingRecordingId(null);
+        setRecordingUrl(null);
         return;
       }
 
@@ -113,21 +97,66 @@ const CallHistory = () => {
         audioRef.current.currentTime = 0;
       }
 
-      const url = await apiService.playRecording(callId);
-      setRecordingUrl(url);
+      let recordingUrlToUse: string | null = null;
+
+      // Priority 1: Use recordingUrl from call object if available
+      if (call?.recordingUrl) {
+        recordingUrlToUse = call.recordingUrl;
+      } else {
+        // Priority 2: Fetch from API
+        try {
+          recordingUrlToUse = await apiService.playRecording(callId);
+        } catch (apiError: any) {
+          // If API call fails, check if call has recordingUrl in the calls list
+          const callFromList = calls?.find(c => c.id === callId);
+          if (callFromList?.recordingUrl) {
+            recordingUrlToUse = callFromList.recordingUrl;
+          } else {
+            throw apiError;
+          }
+        }
+      }
+
+      if (!recordingUrlToUse) {
+        toast.error("No recording URL available for this call");
+        return;
+      }
+
+      setRecordingUrl(recordingUrlToUse);
       setPlayingRecordingId(callId);
       
       // Play the audio
       if (audioRef.current) {
-        audioRef.current.src = url;
-        audioRef.current.play().catch((error) => {
-          toast.error("Failed to play recording");
+        audioRef.current.src = recordingUrlToUse;
+        audioRef.current.load(); // Load the audio source
+        
+        // Try to play with better error handling
+        try {
+          await audioRef.current.play();
+        } catch (playError: any) {
+          console.error("Audio play error:", playError);
+          
+          // Check if it's a CORS or network error
+          if (playError.name === "NotAllowedError") {
+            toast.error("Browser blocked audio playback. Please interact with the page first.");
+          } else if (playError.name === "NotSupportedError") {
+            toast.error("Audio format not supported by your browser");
+          } else if (playError.message?.includes("Failed to load")) {
+            toast.error("Failed to load recording. The recording URL may be invalid or expired.");
+          } else {
+            toast.error(`Failed to play recording: ${playError.message || "Unknown error"}`);
+          }
+          
           setPlayingRecordingId(null);
-        });
+          setRecordingUrl(null);
+        }
       }
-    } catch (error) {
-      toast.error("Failed to load recording");
+    } catch (error: any) {
+      console.error("Recording playback error:", error);
+      const errorMessage = error?.response?.data?.message || error?.message || "Failed to load recording";
+      toast.error(errorMessage);
       setPlayingRecordingId(null);
+      setRecordingUrl(null);
     }
   };
 
@@ -140,8 +169,31 @@ const CallHistory = () => {
       setRecordingUrl(null);
     };
 
-    const handleError = () => {
-      toast.error("Error playing recording");
+    const handleError = (e: Event) => {
+      console.error("Audio element error:", e);
+      const audio = e.target as HTMLAudioElement;
+      let errorMessage = "Error playing recording";
+      
+      if (audio.error) {
+        switch (audio.error.code) {
+          case MediaError.MEDIA_ERR_ABORTED:
+            errorMessage = "Audio playback was aborted";
+            break;
+          case MediaError.MEDIA_ERR_NETWORK:
+            errorMessage = "Network error while loading recording";
+            break;
+          case MediaError.MEDIA_ERR_DECODE:
+            errorMessage = "Error decoding recording";
+            break;
+          case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
+            errorMessage = "Recording format not supported";
+            break;
+          default:
+            errorMessage = `Audio error: ${audio.error.message || "Unknown error"}`;
+        }
+      }
+      
+      toast.error(errorMessage);
       setPlayingRecordingId(null);
       setRecordingUrl(null);
     };
@@ -458,7 +510,10 @@ const CallHistory = () => {
                                   variant="ghost"
                                   size="sm"
                                   className="text-primary hover:text-primary/80 p-2"
-                                  onClick={() => handlePlayRecording(call.id)}
+                                  onClick={(e) => {
+                                    e.stopPropagation(); // Prevent triggering row click
+                                    handlePlayRecording(call.id, call);
+                                  }}
                                 >
                                   {isPlaying ? (
                                     <Pause className="h-4 w-4" />
