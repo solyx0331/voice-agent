@@ -61,6 +61,7 @@ export function AgentConfigDialog({ open, onOpenChange, agent, onSave, isSaving 
       },
       fallbackToVoicemail: false,
       voicemailMessage: "",
+      secondAttemptMessage: "I'm sorry, I'm having trouble understanding you. Would you like to speak to a human representative instead?",
     },
     leadCapture: {
       fields: [] as Array<{ name: string; question: string; required: boolean; type: "text" | "email" | "phone" | "number" }>,
@@ -73,11 +74,41 @@ export function AgentConfigDialog({ open, onOpenChange, agent, onSave, isSaving 
         apiKey: "",
       },
     },
+    emailTemplate: {
+      subjectFormat: "New Inquiry - {{CompanyName}} - {{CallerName}}",
+      bodyTemplate: `Company: {{CompanyName}}
+
+Name: {{CallerName}}
+
+Phone: {{PhoneNumber}}
+
+Email: {{Email}}
+
+Service Interested In: {{ServiceType}}
+
+Budget (if provided): {{Budget}}
+
+Business Type (if provided): {{BusinessType}}
+
+Company Size (QW Direct): {{CompanySize}}
+
+Timeline: {{Timeline}}
+
+Call Summary:
+
+{{AgentGeneratedSummary}}`,
+    },
     baseLogic: {
       greetingMessage: "",
-      primaryIntentPrompts: [] as string[],
-      leadCaptureQuestions: [] as Array<{ question: string }>,
-      responseLogic: [] as Array<{ condition: string; action: string; response: string }>,
+      routingLogics: [] as Array<{
+        id: string;
+        name: string;
+        condition: string;
+        action: string;
+        response: string;
+        informationGathering: Array<{ question: string }>;
+        leadCaptureFields: Array<{ name: string; question: string; required: boolean; type: "text" | "email" | "phone" | "number" }>;
+      }>,
     },
   });
 
@@ -152,6 +183,7 @@ export function AgentConfigDialog({ open, onOpenChange, agent, onSave, isSaving 
           },
           fallbackToVoicemail: agent.callRules?.fallbackToVoicemail || false,
           voicemailMessage: agent.callRules?.voicemailMessage || "",
+          secondAttemptMessage: agent.callRules?.secondAttemptMessage || "I'm sorry, I'm having trouble understanding you. Would you like to speak to a human representative instead?",
         },
         leadCapture: agent.leadCapture || { fields: [] },
         notifications: {
@@ -162,11 +194,41 @@ export function AgentConfigDialog({ open, onOpenChange, agent, onSave, isSaving 
             apiKey: agent.notifications?.crm?.apiKey || "",
           },
         },
+        emailTemplate: agent.emailTemplate || {
+          subjectFormat: "New Inquiry - {{CompanyName}} - {{CallerName}}",
+          bodyTemplate: `Company: {{CompanyName}}
+
+Name: {{CallerName}}
+
+Phone: {{PhoneNumber}}
+
+Email: {{Email}}
+
+Service Interested In: {{ServiceType}}
+
+Budget (if provided): {{Budget}}
+
+Business Type (if provided): {{BusinessType}}
+
+Company Size (QW Direct): {{CompanySize}}
+
+Timeline: {{Timeline}}
+
+Call Summary:
+
+{{AgentGeneratedSummary}}`,
+        },
         baseLogic: {
           greetingMessage: agent.baseLogic?.greetingMessage || "",
-          primaryIntentPrompts: agent.baseLogic?.primaryIntentPrompts || [],
-          leadCaptureQuestions: agent.baseLogic?.leadCaptureQuestions || [],
-          responseLogic: agent.baseLogic?.responseLogic || [],
+          routingLogics: agent.baseLogic?.routingLogics || (agent.baseLogic?.responseLogic ? agent.baseLogic.responseLogic.map((rl, idx) => ({
+            id: `routing-${idx}`,
+            name: `Routing Logic ${idx + 1}`,
+            condition: rl.condition,
+            action: rl.action,
+            response: rl.response,
+            informationGathering: agent.baseLogic?.leadCaptureQuestions || [],
+            leadCaptureFields: agent.leadCapture?.fields || [],
+          })) : []),
         },
       });
     } else {
@@ -192,17 +254,40 @@ export function AgentConfigDialog({ open, onOpenChange, agent, onSave, isSaving 
           },
           fallbackToVoicemail: false,
           voicemailMessage: "",
+          secondAttemptMessage: "I'm sorry, I'm having trouble understanding you. Would you like to speak to a human representative instead?",
         },
         leadCapture: { fields: [] },
         notifications: {
           email: "",
           crm: { type: "webhook", endpoint: "", apiKey: "" },
         },
+        emailTemplate: {
+          subjectFormat: "New Inquiry - {{CompanyName}} - {{CallerName}}",
+          bodyTemplate: `Company: {{CompanyName}}
+
+Name: {{CallerName}}
+
+Phone: {{PhoneNumber}}
+
+Email: {{Email}}
+
+Service Interested In: {{ServiceType}}
+
+Budget (if provided): {{Budget}}
+
+Business Type (if provided): {{BusinessType}}
+
+Company Size (QW Direct): {{CompanySize}}
+
+Timeline: {{Timeline}}
+
+Call Summary:
+
+{{AgentGeneratedSummary}}`,
+        },
         baseLogic: {
           greetingMessage: "",
-          primaryIntentPrompts: [],
-          leadCaptureQuestions: [],
-          responseLogic: [],
+          routingLogics: [],
         },
       });
     }
@@ -290,69 +375,109 @@ export function AgentConfigDialog({ open, onOpenChange, agent, onSave, isSaving 
     });
   };
 
-  const addIntentPrompt = () => {
+
+  const addRoutingLogic = () => {
+    const newId = `routing-${Date.now()}`;
     setFormData({
       ...formData,
       baseLogic: {
         ...formData.baseLogic,
-        primaryIntentPrompts: [...formData.baseLogic.primaryIntentPrompts, ""],
+        routingLogics: [...formData.baseLogic.routingLogics, {
+          id: newId,
+          name: `Routing Logic ${formData.baseLogic.routingLogics.length + 1}`,
+          condition: "",
+          action: "",
+          response: "",
+          informationGathering: [],
+          leadCaptureFields: [],
+        }],
       },
     });
   };
 
-  const removeIntentPrompt = (index: number) => {
+  const removeRoutingLogic = (id: string) => {
     setFormData({
       ...formData,
       baseLogic: {
         ...formData.baseLogic,
-        primaryIntentPrompts: formData.baseLogic.primaryIntentPrompts.filter((_, i) => i !== index),
+        routingLogics: formData.baseLogic.routingLogics.filter((r) => r.id !== id),
       },
     });
   };
 
-  const addLeadQuestion = () => {
+  const updateRoutingLogic = (id: string, updates: Partial<typeof formData.baseLogic.routingLogics[0]>) => {
     setFormData({
       ...formData,
       baseLogic: {
         ...formData.baseLogic,
-        leadCaptureQuestions: [...formData.baseLogic.leadCaptureQuestions, { question: "" }],
+        routingLogics: formData.baseLogic.routingLogics.map((r) =>
+          r.id === id ? { ...r, ...updates } : r
+        ),
       },
     });
   };
 
-  const removeLeadQuestion = (index: number) => {
-    setFormData({
-      ...formData,
-      baseLogic: {
-        ...formData.baseLogic,
-        leadCaptureQuestions: formData.baseLogic.leadCaptureQuestions.filter((_, i) => i !== index),
-      },
+  const addInformationGatheringQuestion = (routingId: string) => {
+    updateRoutingLogic(routingId, {
+      informationGathering: [
+        ...formData.baseLogic.routingLogics.find((r) => r.id === routingId)?.informationGathering || [],
+        { question: "" },
+      ],
     });
   };
 
-  const addResponseLogic = () => {
-    setFormData({
-      ...formData,
-      baseLogic: {
-        ...formData.baseLogic,
-        responseLogic: [...formData.baseLogic.responseLogic, { condition: "", action: "", response: "" }],
-      },
+  const removeInformationGatheringQuestion = (routingId: string, index: number) => {
+    const routing = formData.baseLogic.routingLogics.find((r) => r.id === routingId);
+    if (routing) {
+      updateRoutingLogic(routingId, {
+        informationGathering: routing.informationGathering.filter((_, i) => i !== index),
+      });
+    }
+  };
+
+  const addLeadCaptureField = (routingId: string) => {
+    updateRoutingLogic(routingId, {
+      leadCaptureFields: [
+        ...formData.baseLogic.routingLogics.find((r) => r.id === routingId)?.leadCaptureFields || [],
+        { name: "", question: "", required: false, type: "text" as const },
+      ],
     });
   };
 
-  const removeResponseLogic = (index: number) => {
-    setFormData({
-      ...formData,
-      baseLogic: {
-        ...formData.baseLogic,
-        responseLogic: formData.baseLogic.responseLogic.filter((_, i) => i !== index),
-      },
-    });
+  const removeLeadCaptureField = (routingId: string, index: number) => {
+    const routing = formData.baseLogic.routingLogics.find((r) => r.id === routingId);
+    if (routing) {
+      updateRoutingLogic(routingId, {
+        leadCaptureFields: routing.leadCaptureFields.filter((_, i) => i !== index),
+      });
+    }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100vw-2rem)] sm:w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+    <Dialog open={open} onOpenChange={(open) => {
+      // Only allow closing via Cancel button, not by clicking outside or pressing ESC
+      if (!open) {
+        // Prevent closing - do nothing
+        return;
+      }
+      onOpenChange(open);
+    }}>
+      <DialogContent 
+        className="w-[calc(100vw-2rem)] sm:w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+        hideCloseButton={true}
+        onEscapeKeyDown={(e) => {
+          // Prevent closing on ESC key
+          e.preventDefault();
+        }}
+        onPointerDownOutside={(e) => {
+          // Prevent closing on outside click
+          e.preventDefault();
+        }}
+        onInteractOutside={(e) => {
+          // Prevent closing on outside interaction
+          e.preventDefault();
+        }}
+      >
         <DialogHeader>
           <DialogTitle>{agent ? "Edit Voice Agent" : "Create New Voice Agent"}</DialogTitle>
         </DialogHeader>
@@ -531,236 +656,353 @@ export function AgentConfigDialog({ open, onOpenChange, agent, onSave, isSaving 
               )}
             </div>
 
-            {/* Base Receptionist Logic */}
-            <div className="pt-4 border-t space-y-4">
-              <h3 className="font-semibold text-sm">Base Receptionist Logic</h3>
-              
-              <div>
-                <Label htmlFor="greeting-message">Greeting Message</Label>
-                <Textarea
-                  id="greeting-message"
-                  value={formData.baseLogic.greetingMessage}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    baseLogic: { ...formData.baseLogic, greetingMessage: e.target.value },
-                  })}
-                  placeholder="Hello! Thank you for calling. How can I assist you today?"
-                  rows={3}
-                />
+            {/* Conversation Design Intake Form - Matching Mockup Flowchart */}
+            <div className="pt-4 border-t space-y-6">
+              <div className="border-l-4 border-primary pl-4">
+                <h2 className="text-lg font-bold mb-2">Conversation Design Intake Form</h2>
+                <p className="text-sm text-muted-foreground">Configure your voice agent following the structured flow</p>
               </div>
 
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <Label>Primary Intent Prompts</Label>
-                  <Button type="button" variant="outline" size="sm" onClick={addIntentPrompt}>
-                    <Plus className="h-4 w-4 mr-1" />
-                    Add
-                  </Button>
-                </div>
-                {formData.baseLogic.primaryIntentPrompts.map((prompt, index) => (
-                  <div key={index} className="flex gap-2 mb-2">
-                    <Input
-                      value={prompt}
-                      onChange={(e) => {
-                        const newPrompts = [...formData.baseLogic.primaryIntentPrompts];
-                        newPrompts[index] = e.target.value;
-                        setFormData({
-                          ...formData,
-                          baseLogic: { ...formData.baseLogic, primaryIntentPrompts: newPrompts },
-                        });
-                      }}
-                      placeholder="What can I help you with?"
-                    />
-                    <Button type="button" variant="ghost" size="sm" onClick={() => removeIntentPrompt(index)}>
-                      <X className="h-4 w-4" />
-                    </Button>
+              {/* 1. Initial Logic / Greeting */}
+              <div className="space-y-4 p-4 bg-muted/30 rounded-lg border">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">1</div>
+                  <div>
+                    <h3 className="font-semibold text-sm">Initial Logic / Greeting</h3>
+                    <p className="text-xs text-muted-foreground">The exact welcome script and routing menu options</p>
                   </div>
-                ))}
+                </div>
+                <div>
+                  <Label htmlFor="greeting-message">Welcome Script & Routing Menu</Label>
+                  <Textarea
+                    id="greeting-message"
+                    value={formData.baseLogic.greetingMessage}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      baseLogic: { ...formData.baseLogic, greetingMessage: e.target.value },
+                    })}
+                    placeholder="Hello! Thank you for calling. This is the virtual assistant for Evolved Sound and QW Direct. To help you better, please say the name of the company you're trying to reach. You can say 'Evolved Sound' or 'QW Direct'."
+                    rows={4}
+                    className="mt-2"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Include the exact welcome message and routing options for callers to choose from
+                  </p>
+                </div>
               </div>
 
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <Label>Lead Capture Questions</Label>
-                  <Button type="button" variant="outline" size="sm" onClick={addLeadQuestion}>
-                    <Plus className="h-4 w-4 mr-1" />
-                    Add
-                  </Button>
-                </div>
-                {formData.baseLogic.leadCaptureQuestions.map((item, index) => (
-                  <div key={index} className="flex gap-2 mb-2">
-                    <Input
-                      value={item.question}
-                      onChange={(e) => {
-                        const newQuestions = [...formData.baseLogic.leadCaptureQuestions];
-                        newQuestions[index] = { ...newQuestions[index], question: e.target.value };
-                        setFormData({
-                          ...formData,
-                          baseLogic: { ...formData.baseLogic, leadCaptureQuestions: newQuestions },
-                        });
-                      }}
-                      placeholder="What's your name?"
-                      className="flex-1"
-                    />
-                    <Button type="button" variant="ghost" size="sm" onClick={() => removeLeadQuestion(index)}>
-                      <X className="h-4 w-4" />
-                    </Button>
+              {/* 2. Routing Logic Blocks (Dynamic) */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">2</div>
+                    <div>
+                      <h3 className="font-semibold text-sm">Routing Logic</h3>
+                      <p className="text-xs text-muted-foreground">Define routing blocks with condition, action, response, and data collection</p>
+                    </div>
                   </div>
-                ))}
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <Label>Response Logic (Advanced)</Label>
-                  <Button type="button" variant="outline" size="sm" onClick={addResponseLogic}>
+                  <Button type="button" variant="outline" size="sm" onClick={addRoutingLogic}>
                     <Plus className="h-4 w-4 mr-1" />
-                    Add Rule
+                    Add Routing Logic
                   </Button>
                 </div>
-                {formData.baseLogic.responseLogic.map((rule, index) => (
-                  <div key={index} className="p-3 bg-secondary rounded-lg mb-2 space-y-2">
-                    <div className="flex gap-2">
-                      <Input
-                        value={rule.condition}
-                        onChange={(e) => {
-                          const newLogic = [...formData.baseLogic.responseLogic];
-                          newLogic[index] = { ...newLogic[index], condition: e.target.value };
-                          setFormData({
-                            ...formData,
-                            baseLogic: { ...formData.baseLogic, responseLogic: newLogic },
-                          });
-                        }}
-                        placeholder="If booking appointment"
-                        className="flex-1"
-                      />
-                      <Button type="button" variant="ghost" size="sm" onClick={() => removeResponseLogic(index)}>
-                        <X className="h-4 w-4" />
+
+                {formData.baseLogic.routingLogics.length === 0 && (
+                  <div className="p-4 bg-muted/30 rounded-lg border border-dashed">
+                    <p className="text-sm text-muted-foreground text-center mb-2">No routing logic blocks added yet.</p>
+                    <p className="text-xs text-muted-foreground text-center">Click "Add Routing Logic" to create a routing block with condition, action, response, information gathering, and lead capture fields.</p>
+                  </div>
+                )}
+
+                {formData.baseLogic.routingLogics.map((routing, routingIndex) => (
+                  <div key={routing.id} className="p-4 bg-muted/30 rounded-lg border space-y-4">
+                    <div className="flex items-center justify-between pb-3 border-b">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-xs">
+                          {routingIndex + 1}
+                        </div>
+                        <Input
+                          value={routing.name}
+                          onChange={(e) => updateRoutingLogic(routing.id, { name: e.target.value })}
+                          placeholder="Routing Logic Name (e.g., Evolved Sound Route)"
+                          className="font-semibold border-0 bg-transparent p-0 h-auto"
+                        />
+                      </div>
+                      <Button type="button" variant="ghost" size="sm" onClick={() => removeRoutingLogic(routing.id)}>
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
-                    <Input
-                      value={rule.action}
-                      onChange={(e) => {
-                        const newLogic = [...formData.baseLogic.responseLogic];
-                        newLogic[index] = { ...newLogic[index], action: e.target.value };
-                        setFormData({
-                          ...formData,
-                          baseLogic: { ...formData.baseLogic, responseLogic: newLogic },
-                        });
-                      }}
-                      placeholder="Action (e.g., ask for date)"
-                    />
-                    <Textarea
-                      value={rule.response}
-                      onChange={(e) => {
-                        const newLogic = [...formData.baseLogic.responseLogic];
-                        newLogic[index] = { ...newLogic[index], response: e.target.value };
-                        setFormData({
-                          ...formData,
-                          baseLogic: { ...formData.baseLogic, responseLogic: newLogic },
-                        });
-                      }}
-                      placeholder="Response text"
-                      rows={2}
-                    />
+
+                    {/* Routing Rules: Condition, Action, Response */}
+                    <div className="space-y-3">
+                      <h4 className="text-sm font-medium">Routing Rules</h4>
+                      <div>
+                        <Label className="text-xs text-muted-foreground mb-1 block">Condition (When this happens)</Label>
+                        <Input
+                          value={routing.condition}
+                          onChange={(e) => updateRoutingLogic(routing.id, { condition: e.target.value })}
+                          placeholder='e.g., caller says "Evolved Sound"'
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-muted-foreground mb-1 block">Action (What to do)</Label>
+                        <Input
+                          value={routing.action}
+                          onChange={(e) => updateRoutingLogic(routing.id, { action: e.target.value })}
+                          placeholder='e.g., Route to Evolved Sound logic tree'
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-muted-foreground mb-1 block">Response (What to say)</Label>
+                        <Textarea
+                          value={routing.response}
+                          onChange={(e) => updateRoutingLogic(routing.id, { response: e.target.value })}
+                          placeholder='e.g., Thank you for choosing Evolved Sound. What type of service are you enquiring about?'
+                          rows={2}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Information Gathering (Inside Routing Logic) */}
+                    <div className="pt-4 border-t space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-medium">Information Gathering</h4>
+                        <Button type="button" variant="outline" size="sm" onClick={() => addInformationGatheringQuestion(routing.id)}>
+                          <Plus className="h-3 w-3 mr-1" />
+                          Add Question
+                        </Button>
+                      </div>
+                      {routing.informationGathering.length === 0 && (
+                        <p className="text-xs text-muted-foreground italic">No information gathering questions added yet.</p>
+                      )}
+                      {routing.informationGathering.map((item, index) => (
+                        <div key={index} className="flex gap-2">
+                          <Input
+                            value={item.question}
+                            onChange={(e) => {
+                              const updated = [...routing.informationGathering];
+                              updated[index] = { question: e.target.value };
+                              updateRoutingLogic(routing.id, { informationGathering: updated });
+                            }}
+                            placeholder='e.g., What type of service are you enquiring about?'
+                            className="flex-1 text-xs"
+                          />
+                          <Button type="button" variant="ghost" size="sm" onClick={() => removeInformationGatheringQuestion(routing.id, index)}>
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Lead Capture Fields (Inside Routing Logic) */}
+                    <div className="pt-4 border-t space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-medium">Lead Capture Fields</h4>
+                        <Button type="button" variant="outline" size="sm" onClick={() => addLeadCaptureField(routing.id)}>
+                          <Plus className="h-3 w-3 mr-1" />
+                          Add Field
+                        </Button>
+                      </div>
+                      {routing.leadCaptureFields.length === 0 && (
+                        <p className="text-xs text-muted-foreground italic">No lead capture fields added yet.</p>
+                      )}
+                      {routing.leadCaptureFields.map((field, index) => (
+                        <div key={index} className="p-3 bg-secondary rounded-lg space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-medium">Field #{index + 1}</span>
+                            <Button type="button" variant="ghost" size="sm" onClick={() => removeLeadCaptureField(routing.id, index)}>
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <Input
+                              value={field.name}
+                              onChange={(e) => {
+                                const updated = [...routing.leadCaptureFields];
+                                updated[index] = { ...updated[index], name: e.target.value };
+                                updateRoutingLogic(routing.id, { leadCaptureFields: updated });
+                              }}
+                              placeholder="Field name (e.g., fullName)"
+                              className="text-xs"
+                            />
+                            <Select
+                              value={field.type}
+                              onValueChange={(value: "text" | "email" | "phone" | "number") => {
+                                const updated = [...routing.leadCaptureFields];
+                                updated[index] = { ...updated[index], type: value };
+                                updateRoutingLogic(routing.id, { leadCaptureFields: updated });
+                              }}
+                            >
+                              <SelectTrigger className="text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="text">Text</SelectItem>
+                                <SelectItem value="email">Email</SelectItem>
+                                <SelectItem value="phone">Phone</SelectItem>
+                                <SelectItem value="number">Number</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <Input
+                            value={field.question}
+                            onChange={(e) => {
+                              const updated = [...routing.leadCaptureFields];
+                              updated[index] = { ...updated[index], question: e.target.value };
+                              updateRoutingLogic(routing.id, { leadCaptureFields: updated });
+                            }}
+                            placeholder='Question to ask (e.g., What is your full name?)'
+                            className="text-xs"
+                          />
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              id={`required-${routing.id}-${index}`}
+                              checked={field.required}
+                              onChange={(e) => {
+                                const updated = [...routing.leadCaptureFields];
+                                updated[index] = { ...updated[index], required: e.target.checked };
+                                updateRoutingLogic(routing.id, { leadCaptureFields: updated });
+                              }}
+                              className="rounded"
+                            />
+                            <Label htmlFor={`required-${routing.id}-${index}`} className="text-xs cursor-pointer">
+                              Required field
+                            </Label>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 ))}
               </div>
-            </div>
 
-            {/* FAQs Section */}
-            <div className="pt-4 border-t space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-sm">Frequently Asked Questions</h3>
-                <Button type="button" variant="outline" size="sm" onClick={addFAQ}>
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add FAQ
-                </Button>
-              </div>
-            {formData.faqs.map((faq, index) => (
-              <div key={index} className="p-4 bg-secondary rounded-lg space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">FAQ #{index + 1}</span>
-                  <Button type="button" variant="ghost" size="sm" onClick={() => removeFAQ(index)}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-                <Input
-                  value={faq.question}
-                  onChange={(e) => {
-                    const newFAQs = [...formData.faqs];
-                    newFAQs[index] = { ...newFAQs[index], question: e.target.value };
-                    setFormData({ ...formData, faqs: newFAQs });
-                  }}
-                  placeholder="Question"
-                />
-                <Textarea
-                  value={faq.answer}
-                  onChange={(e) => {
-                    const newFAQs = [...formData.faqs];
-                    newFAQs[index] = { ...newFAQs[index], answer: e.target.value };
-                    setFormData({ ...formData, faqs: newFAQs });
-                  }}
-                  placeholder="Answer"
-                  rows={3}
-                />
-              </div>
-            ))}
-            {formData.faqs.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-8">No FAQs added yet. Click "Add FAQ" to get started.</p>
-            )}
-
-            <div className="pt-4 border-t">
-              <div className="flex items-center justify-between mb-2">
-                <Label>Intents</Label>
-                <Button type="button" variant="outline" size="sm" onClick={addIntent}>
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add Intent
-                </Button>
-              </div>
-              {formData.intents.map((intent, index) => (
-                <div key={index} className="p-4 bg-secondary rounded-lg space-y-2 mb-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Intent #{index + 1}</span>
-                    <Button type="button" variant="ghost" size="sm" onClick={() => removeIntent(index)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+              {/* 3. Summary / Email Template */}
+              <div className="space-y-4 p-4 bg-muted/30 rounded-lg border">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">3</div>
+                  <div>
+                    <h3 className="font-semibold text-sm">Summary / Email Template</h3>
+                    <p className="text-xs text-muted-foreground">Email will be sent to client (caller) after call ends with exact information collected</p>
                   </div>
-                  <Input
-                    value={intent.name}
-                    onChange={(e) => {
-                      const newIntents = [...formData.intents];
-                      newIntents[index] = { ...newIntents[index], name: e.target.value };
-                      setFormData({ ...formData, intents: newIntents });
-                    }}
-                    placeholder="Intent name (e.g., 'booking', 'support')"
-                  />
-                  <Textarea
-                    value={intent.prompt}
-                    onChange={(e) => {
-                      const newIntents = [...formData.intents];
-                      newIntents[index] = { ...newIntents[index], prompt: e.target.value };
-                      setFormData({ ...formData, intents: newIntents });
-                    }}
-                    placeholder="Prompt (e.g., 'Are you booking an appointment?')"
-                    rows={2}
-                  />
-                  <Textarea
-                    value={intent.response || ""}
-                    onChange={(e) => {
-                      const newIntents = [...formData.intents];
-                      newIntents[index] = { ...newIntents[index], response: e.target.value };
-                      setFormData({ ...formData, intents: newIntents });
-                    }}
-                    placeholder="Response (optional)"
-                    rows={2}
-                  />
                 </div>
-              ))}
-              {formData.intents.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-8">No intents added yet. Click "Add Intent" to get started.</p>
-              )}
+                <div className="space-y-3">
+                  <div className="p-3 bg-secondary rounded-lg">
+                    <p className="text-xs font-medium mb-1">Email Recipient:</p>
+                    <p className="text-xs text-muted-foreground">
+                      Email will be automatically sent to the caller's email address collected during the call (from Lead Capture Fields).
+                    </p>
+                  </div>
+                  <div>
+                    <Label>Email Subject Format</Label>
+                    <Input
+                      value={formData.emailTemplate?.subjectFormat || "New Inquiry - {{CompanyName}} - {{CallerName}}"}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        emailTemplate: { 
+                          ...formData.emailTemplate || { subjectFormat: "", bodyTemplate: "" },
+                          subjectFormat: e.target.value 
+                        },
+                      })}
+                      placeholder="New Inquiry - {{CompanyName}} - {{CallerName}}"
+                      className="mt-1"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Use {"{{FieldName}}"} to insert dynamic values (e.g., {"{{CompanyName}}"}, {"{{CallerName}}"})
+                    </p>
+                  </div>
+                  <div>
+                    <Label>Email Body Template</Label>
+                    <Textarea
+                      value={formData.emailTemplate?.bodyTemplate || `Company: {{CompanyName}}
+
+Name: {{CallerName}}
+
+Phone: {{PhoneNumber}}
+
+Email: {{Email}}
+
+Service Interested In: {{ServiceType}}
+
+Budget (if provided): {{Budget}}
+
+Business Type (if provided): {{BusinessType}}
+
+Company Size (QW Direct): {{CompanySize}}
+
+Timeline: {{Timeline}}
+
+Call Summary:
+
+{{AgentGeneratedSummary}}`}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        emailTemplate: { 
+                          ...formData.emailTemplate || { subjectFormat: "", bodyTemplate: "" },
+                          bodyTemplate: e.target.value 
+                        },
+                      })}
+                      placeholder="Company: {{CompanyName}}..."
+                      rows={15}
+                      className="mt-1 font-mono text-xs"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Use {"{{FieldName}}"} placeholders. Available fields: CompanyName, CallerName, PhoneNumber, Email, ServiceType, Budget, BusinessType, CompanySize, Timeline, AgentGeneratedSummary
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 4. Fallback / Escalation Rules */}
+              <div className="space-y-4 p-4 bg-muted/30 rounded-lg border">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">4</div>
+                  <div>
+                    <h3 className="font-semibold text-sm">Fallback / Escalation Rules</h3>
+                    <p className="text-xs text-muted-foreground">What the agent should say/do if it cannot understand the caller</p>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <div>
+                    <Label>First Attempt (Unclear Response)</Label>
+                    <Textarea
+                      value={formData.callRules.fallbackToVoicemail ? formData.callRules.voicemailMessage : "I didn't catch that. Could you repeat the name of the company you are calling?"}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        callRules: {
+                          ...formData.callRules,
+                          voicemailMessage: e.target.value,
+                        },
+                      })}
+                      placeholder="I didn't catch that. Could you repeat the name of the company you are calling?"
+                      rows={2}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label>Second Attempt (Still Unclear)</Label>
+                    <Textarea
+                      value={formData.callRules.secondAttemptMessage || "I'm sorry, I'm having trouble understanding you. Would you like to speak to a human representative instead?"}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        callRules: {
+                          ...formData.callRules,
+                          secondAttemptMessage: e.target.value,
+                        },
+                      })}
+                      placeholder="I'm sorry, I'm having trouble understanding you. Would you like to speak to a human representative instead?"
+                      rows={2}
+                      className="mt-1"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Message to say after 2 failed attempts to understand the caller
+                    </p>
+                  </div>
+                </div>
+              </div>
+
             </div>
           </div>
-        </div>
         )}
 
         <div className="flex justify-end gap-2 pt-4 border-t">
@@ -775,4 +1017,5 @@ export function AgentConfigDialog({ open, onOpenChange, agent, onSave, isSaving 
     </Dialog>
   );
 }
+
 

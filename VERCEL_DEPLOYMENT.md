@@ -74,3 +74,5 @@ If you prefer to configure this via Vercel Dashboard:
 - API routes (if you have any) should be excluded from the rewrite rule
 - The rewrite rule `"source": "/(.*)"` matches all paths, so make sure your API routes are handled separately if needed
 
+
+

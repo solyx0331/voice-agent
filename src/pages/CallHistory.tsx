@@ -12,8 +12,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Call } from "@/lib/api/types";
+import { Call, VoiceAgent } from "@/lib/api/types";
 import { useSearchParams } from "react-router-dom";
+import { useAgentDetails } from "@/hooks/useVoiceAgents";
 
 const typeIcons = {
   inbound: PhoneIncoming,
@@ -47,6 +48,10 @@ const CallHistory = () => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const modalAudioRef = useRef<HTMLAudioElement>(null);
   const isSeekingRef = useRef<boolean>(false);
+  
+  // Get agent details to access email template
+  const agentId = selectedCall?.agentId;
+  const { data: agentDetails } = useAgentDetails(agentId || null);
 
   const { data: calls, isLoading } = useCalls({
     search: search || undefined,
@@ -749,6 +754,93 @@ const CallHistory = () => {
                             </div>
                           </div>
                         )}
+                      </div>
+                    )}
+
+                    {/* Email Template Section */}
+                    {agentDetails?.emailTemplate && selectedCall.callAnalysis?.extractedData && (
+                      <div className="pt-4 border-t border-border space-y-4">
+                        <Label className="text-sm font-medium mb-3 block">Email Template</Label>
+                        
+                        {/* Email Subject */}
+                        <div>
+                          <Label className="text-xs text-muted-foreground mb-1 block">Subject</Label>
+                          <div className="bg-secondary p-3 rounded-lg">
+                            <p className="text-sm text-foreground font-mono">
+                              {(() => {
+                                const subjectTemplate = agentDetails.emailTemplate.subjectFormat || "New Inquiry - {{CompanyName}} - {{CallerName}}";
+                                const extractedData = selectedCall.callAnalysis.extractedData;
+                                const emailData: Record<string, any> = {
+                                  ...extractedData,
+                                  CompanyName: extractedData.companyName || extractedData.company || "",
+                                  CallerName: extractedData.callerName || extractedData.name || selectedCall.contact || "",
+                                  PhoneNumber: selectedCall.phone || extractedData.phoneNumber || extractedData.phone || "",
+                                  Email: extractedData.email || "",
+                                  ServiceType: extractedData.serviceType || extractedData.service || "",
+                                  Budget: extractedData.budget || "",
+                                  BusinessType: extractedData.businessType || extractedData.business || "",
+                                  CompanySize: extractedData.companySize || "",
+                                  Timeline: extractedData.timeline || extractedData.timeframe || "",
+                                  AgentGeneratedSummary: selectedCall.callAnalysis.summary || "",
+                                };
+                                return subjectTemplate.replace(/\{\{([^}]+)\}\}/g, (match, fieldName) => {
+                                  const trimmed = fieldName.trim();
+                                  return emailData[trimmed] || emailData[trimmed.charAt(0).toLowerCase() + trimmed.slice(1)] || "";
+                                });
+                              })()}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Email Body */}
+                        <div>
+                          <Label className="text-xs text-muted-foreground mb-1 block">Body</Label>
+                          <div className="bg-secondary p-3 rounded-lg">
+                            <pre className="text-sm text-foreground font-mono whitespace-pre-wrap">
+                              {(() => {
+                                const bodyTemplate = agentDetails.emailTemplate.bodyTemplate || `Company: {{CompanyName}}
+
+Name: {{CallerName}}
+
+Phone: {{PhoneNumber}}
+
+Email: {{Email}}
+
+Service Interested In: {{ServiceType}}
+
+Budget (if provided): {{Budget}}
+
+Business Type (if provided): {{BusinessType}}
+
+Company Size (QW Direct): {{CompanySize}}
+
+Timeline: {{Timeline}}
+
+Call Summary:
+
+{{AgentGeneratedSummary}}`;
+                                const extractedData = selectedCall.callAnalysis.extractedData;
+                                const emailData: Record<string, any> = {
+                                  ...extractedData,
+                                  CompanyName: extractedData.companyName || extractedData.company || "",
+                                  CallerName: extractedData.callerName || extractedData.name || selectedCall.contact || "",
+                                  PhoneNumber: selectedCall.phone || extractedData.phoneNumber || extractedData.phone || "",
+                                  Email: extractedData.email || "",
+                                  ServiceType: extractedData.serviceType || extractedData.service || "",
+                                  Budget: extractedData.budget || "",
+                                  BusinessType: extractedData.businessType || extractedData.business || "",
+                                  CompanySize: extractedData.companySize || "",
+                                  Timeline: extractedData.timeline || extractedData.timeframe || "",
+                                  AgentGeneratedSummary: selectedCall.callAnalysis.summary || "",
+                                };
+                                return bodyTemplate.replace(/\{\{([^}]+)\}\}/g, (match, fieldName) => {
+                                  const trimmed = fieldName.trim();
+                                  return emailData[trimmed] || emailData[trimmed.charAt(0).toLowerCase() + trimmed.slice(1)] || "";
+                                });
+                              })()}
+                            </pre>
+                          </div>
+                        </div>
                       </div>
                     )}
 

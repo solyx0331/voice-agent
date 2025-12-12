@@ -85,6 +85,7 @@ export interface VoiceAgent {
     };
     fallbackToVoicemail: boolean;
     voicemailMessage?: string;
+    secondAttemptMessage?: string;
   };
   leadCapture?: {
     fields: Array<{
@@ -102,11 +103,37 @@ export interface VoiceAgent {
       apiKey?: string;
     };
   };
+  emailTemplate?: {
+    subjectFormat: string;
+    bodyTemplate: string;
+    fields?: Array<{
+      label: string;
+      fieldName: string;
+      includeInEmail: boolean;
+    }>;
+  };
   // Base Receptionist Logic
   baseLogic?: {
     greetingMessage: string;
-    primaryIntentPrompts: string[];
-    leadCaptureQuestions: Array<{
+    routingLogics?: Array<{
+      id: string;
+      name: string;
+      condition: string;
+      action: string;
+      response: string;
+      informationGathering: Array<{
+        question: string;
+      }>;
+      leadCaptureFields: Array<{
+        name: string;
+        question: string;
+        required: boolean;
+        type: "text" | "email" | "phone" | "number";
+      }>;
+    }>;
+    // Legacy fields for backward compatibility
+    primaryIntentPrompts?: string[];
+    leadCaptureQuestions?: Array<{
       question: string;
     }>;
     responseLogic?: Array<{
