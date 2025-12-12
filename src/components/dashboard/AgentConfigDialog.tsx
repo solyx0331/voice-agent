@@ -505,12 +505,27 @@ export function AgentConfigDialog({ open, onOpenChange, agent, onSave, isSaving 
                         </Button>
                       </div>
                     )}
-                    {formData.voice.customVoiceUrl && (
-                      <div className="mt-2 p-2 bg-secondary rounded">
-                        <p className="text-xs text-muted-foreground mb-2">Selected voice preview:</p>
-                        <audio src={formData.voice.customVoiceUrl} controls className="w-full" />
-                      </div>
-                    )}
+                    {formData.voice.customVoiceUrl && (() => {
+                      // Construct full URL for audio playback
+                      const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:8000';
+                      const audioUrl = formData.voice.customVoiceUrl.startsWith('http') 
+                        ? formData.voice.customVoiceUrl 
+                        : `${baseUrl}${formData.voice.customVoiceUrl}`;
+                      return (
+                        <div className="mt-2 p-2 bg-secondary rounded">
+                          <p className="text-xs text-muted-foreground mb-2">Selected voice preview:</p>
+                          <audio 
+                            src={audioUrl} 
+                            controls 
+                            className="w-full"
+                            preload="metadata"
+                            onError={(e) => {
+                              console.error('Audio playback error:', e, 'URL:', audioUrl);
+                            }}
+                          />
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               )}
