@@ -797,7 +797,7 @@ const Settings = () => {
                         </Button>
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        Supported formats: MP3, WAV, M4A (max 10MB)
+                        Supported formats: MP3, WAV, M4A, WebM (max 10MB)
                       </p>
                     </div>
 
@@ -825,9 +825,26 @@ const Settings = () => {
                                     {new Date(voice.createdAt).toLocaleDateString()}
                                   </span>
                                 </div>
-                                {voice.url && (
-                                  <audio src={voice.url} controls className="w-full mt-2 h-8" />
-                                )}
+                                {voice.url && (() => {
+                                  // Construct full URL for audio playback
+                                  const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:8000';
+                                  const audioUrl = voice.url.startsWith('http') ? voice.url : `${baseUrl}${voice.url}`;
+                                  return (
+                                    <audio 
+                                      src={audioUrl} 
+                                      controls 
+                                      className="w-full mt-2 h-8"
+                                      preload="metadata"
+                                      onError={(e) => {
+                                        console.error('Audio playback error:', e, 'URL:', audioUrl);
+                                        toast.error('Failed to load audio. The file may be missing or inaccessible.');
+                                      }}
+                                      onLoadStart={() => {
+                                        console.log('Loading audio from:', audioUrl);
+                                      }}
+                                    />
+                                  );
+                                })()}
                               </div>
                               <Button
                                 variant="ghost"
