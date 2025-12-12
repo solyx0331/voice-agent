@@ -45,6 +45,8 @@ const CallHistory = () => {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [recordingUrl, setRecordingUrl] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const modalAudioRef = useRef<HTMLAudioElement>(null);
+  const isSeekingRef = useRef<boolean>(false);
 
   const { data: calls, isLoading } = useCalls({
     search: search || undefined,
@@ -75,19 +77,37 @@ const CallHistory = () => {
   const handleViewDetails = (call: Call) => {
     setSelectedCall(call);
     setIsDetailModalOpen(true);
-    if (call.recording && playingRecordingId !== call.id) {
+    // If viewing a different call, reset the recording state
+    // But if it's the same call that's already playing, preserve the state
+    if (call.recording && playingRecordingId !== call.id && selectedCall?.id !== call.id) {
       setPlayingRecordingId(null);
-      setRecordingUrl(null);
+      // Only clear recordingUrl if we're viewing a different call
+      // This allows the player to stay visible when reopening the same call
+      if (selectedCall?.id && selectedCall.id !== call.id) {
+        setRecordingUrl(null);
+      }
+    }
+    // If the call has a recordingUrl, set it so the player is available
+    if (call.recordingUrl && !recordingUrl) {
+      setRecordingUrl(call.recordingUrl);
     }
   };
 
   const handlePlayRecording = async (callId: string, call?: Call) => {
     try {
       // If already playing this recording, pause it
-      if (playingRecordingId === callId && audioRef.current) {
-        audioRef.current.pause();
+      // But keep the recordingUrl so the player stays visible
+      if (playingRecordingId === callId) {
+        // Try to pause the modal audio if it exists
+        if (modalAudioRef.current) {
+          modalAudioRef.current.pause();
+        }
+        // Try to pause the hidden audio if it exists
+        if (audioRef.current) {
+          audioRef.current.pause();
+        }
         setPlayingRecordingId(null);
-        setRecordingUrl(null);
+        // Don't clear recordingUrl - keep player visible when paused
         return;
       }
 
@@ -767,21 +787,54 @@ const CallHistory = () => {
                               <span className="text-sm text-muted-foreground">Playing...</span>
                             )}
                           </div>
-                          {recordingUrl && playingRecordingId === selectedCall.id && (
+                          {recordingUrl && (
                             <audio
+                              ref={modalAudioRef}
                               controls
                               className="w-full"
-                              autoPlay
-                              key={recordingUrl}
-                              onPlay={() => setPlayingRecordingId(selectedCall.id)}
+                              autoPlay={playingRecordingId === selectedCall.id}
+                              src={recordingUrl}
+                              onPlay={() => {
+                                isSeekingRef.current = false;
+                                setPlayingRecordingId(selectedCall.id);
+                              }}
                               onPause={() => {
-                                if (playingRecordingId === selectedCall.id) {
+                                // Don't reset state during seeking
+                                if (!isSeekingRef.current) {
+                                  // User manually paused - keep player visible but mark as not playing
+                                  // Don't clear recordingUrl so the player stays visible
                                   setPlayingRecordingId(null);
+                                }
+                                isSeekingRef.current = false;
+                              }}
+                              onSeeking={() => {
+                                isSeekingRef.current = true;
+                              }}
+                              onSeeked={() => {
+                                isSeekingRef.current = false;
+                                // After seeking, maintain the playing state if audio is still playing
+                                if (modalAudioRef.current && !modalAudioRef.current.paused) {
+                                  setPlayingRecordingId(selectedCall.id);
+                                }
+                              }}
+                              onTimeUpdate={() => {
+                                // Reset seeking flag if time is updating (means playback resumed)
+                                if (isSeekingRef.current && modalAudioRef.current) {
+                                  const audio = modalAudioRef.current;
+                                  if (!audio.paused) {
+                                    isSeekingRef.current = false;
+                                    // Ensure playing state is set
+                                    if (playingRecordingId !== selectedCall.id) {
+                                      setPlayingRecordingId(selectedCall.id);
+                                    }
+                                  }
                                 }
                               }}
                               onEnded={() => {
+                                isSeekingRef.current = false;
                                 setPlayingRecordingId(null);
-                                setRecordingUrl(null);
+                                // Optionally clear recordingUrl after playback ends
+                                // setRecordingUrl(null);
                               }}
                             >
                               <source src={recordingUrl} type="audio/mpeg" />
