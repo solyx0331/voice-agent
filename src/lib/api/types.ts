@@ -43,6 +43,7 @@ export interface VoiceAgent {
   id: string;
   name: string;
   description: string;
+  systemPrompt?: string; // Custom system prompt for the agent
   status: "active" | "inactive" | "busy";
   calls: number;
   avgDuration: string;
@@ -129,6 +130,25 @@ export interface VoiceAgent {
         question: string;
         required: boolean;
         type: "text" | "email" | "phone" | "number";
+      }>;
+      completionResponse?: string; // Response after collecting information/lead data
+      routingLogics?: Array<{
+        id: string;
+        name: string;
+        condition: string;
+        action: string;
+        response: string;
+        informationGathering: Array<{
+          question: string;
+        }>;
+        leadCaptureFields: Array<{
+          name: string;
+          question: string;
+          required: boolean;
+          type: "text" | "email" | "phone" | "number";
+        }>;
+        completionResponse?: string; // Response after collecting information/lead data
+        routingLogics?: Array<any>; // Recursive type for deeper nesting
       }>;
     }>;
     // Legacy fields for backward compatibility

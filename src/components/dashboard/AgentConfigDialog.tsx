@@ -7,7 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { X, Plus, Trash2, Clock, Mail, Globe } from "lucide-react";
+import { X, Plus, Trash2, Clock, Mail, Globe, Eye, ChevronDown, ChevronUp } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { RoutingPreview } from "./RoutingPreview";
 import { toast } from "sonner";
 import { apiService } from "@/lib/api/api";
 import { VoiceAgent } from "@/lib/api/types";
@@ -39,10 +41,47 @@ export function AgentConfigDialog({ open, onOpenChange, agent, onSave, isSaving 
     type: "uploaded" | "recorded";
   }>>([]);
   const [customVoicesLoading, setCustomVoicesLoading] = useState(false);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  
+  // State for collapsible sections
+  const [isGreetingOpen, setIsGreetingOpen] = useState(true);
+  const [isRoutingOpen, setIsRoutingOpen] = useState(true);
+  const [isEmailTemplateOpen, setIsEmailTemplateOpen] = useState(true);
+  const [isFallbackOpen, setIsFallbackOpen] = useState(true);
+  
+  // State for collapsible routing logic blocks (using Set to track open blocks)
+  const [openRoutingBlocks, setOpenRoutingBlocks] = useState<Set<string>>(new Set());
+  const [openNestedRoutingBlocks, setOpenNestedRoutingBlocks] = useState<Set<string>>(new Set());
+  
+  // Helper functions to toggle routing blocks
+  const toggleRoutingBlock = (routingId: string) => {
+    setOpenRoutingBlocks(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(routingId)) {
+        newSet.delete(routingId);
+      } else {
+        newSet.add(routingId);
+      }
+      return newSet;
+    });
+  };
+  
+  const toggleNestedRoutingBlock = (nestedRoutingId: string) => {
+    setOpenNestedRoutingBlocks(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(nestedRoutingId)) {
+        newSet.delete(nestedRoutingId);
+      } else {
+        newSet.add(nestedRoutingId);
+      }
+      return newSet;
+    });
+  };
 
   const [formData, setFormData] = useState({
     name: "",
     description: "",
+    systemPrompt: "",
     status: "inactive" as "active" | "inactive" | "busy",
     voice: {
       type: "generic" as "generic" | "custom",
@@ -108,6 +147,18 @@ Call Summary:
         response: string;
         informationGathering: Array<{ question: string }>;
         leadCaptureFields: Array<{ name: string; question: string; required: boolean; type: "text" | "email" | "phone" | "number" }>;
+        completionResponse?: string; // Response after collecting information/lead data
+        routingLogics?: Array<{
+          id: string;
+          name: string;
+          condition: string;
+          action: string;
+          response: string;
+          informationGathering: Array<{ question: string }>;
+          leadCaptureFields: Array<{ name: string; question: string; required: boolean; type: "text" | "email" | "phone" | "number" }>;
+          completionResponse?: string; // Response after collecting information/lead data
+          routingLogics?: Array<any>; // Recursive for deeper nesting
+        }>;
       }>,
     },
   });
@@ -165,6 +216,7 @@ Call Summary:
       setFormData({
         name: agent.name || "",
         description: agent.description || "",
+        systemPrompt: agent.systemPrompt || "",
         status: agent.status || "inactive",
         voice: {
           type: agent.voice?.type || "generic",
@@ -236,6 +288,7 @@ Call Summary:
       setFormData({
         name: "",
         description: "",
+        systemPrompt: "",
         status: "inactive",
         voice: {
           type: "generic",
@@ -390,6 +443,7 @@ Call Summary:
           response: "",
           informationGathering: [],
           leadCaptureFields: [],
+          completionResponse: "",
         }],
       },
     });
@@ -405,14 +459,87 @@ Call Summary:
     });
   };
 
-  const updateRoutingLogic = (id: string, updates: Partial<typeof formData.baseLogic.routingLogics[0]>) => {
+  const updateRoutingLogic = (id: string, updates: Partial<typeof formData.baseLogic.routingLogics[0]>, parentId?: string) => {
+    const updateInArray = (routings: typeof formData.baseLogic.routingLogics): typeof formData.baseLogic.routingLogics => {
+      return routings.map((r) => {
+        if (r.id === id) {
+          return { ...r, ...updates };
+        }
+        if (r.routingLogics && r.routingLogics.length > 0) {
+          return { ...r, routingLogics: updateInArray(r.routingLogics as typeof formData.baseLogic.routingLogics) };
+        }
+        return r;
+      });
+    };
+
     setFormData({
       ...formData,
       baseLogic: {
         ...formData.baseLogic,
-        routingLogics: formData.baseLogic.routingLogics.map((r) =>
-          r.id === id ? { ...r, ...updates } : r
-        ),
+        routingLogics: updateInArray(formData.baseLogic.routingLogics),
+      },
+    });
+  };
+
+  const addNestedRoutingLogic = (parentId: string) => {
+    const addToParent = (routings: typeof formData.baseLogic.routingLogics): typeof formData.baseLogic.routingLogics => {
+      return routings.map((r) => {
+        if (r.id === parentId) {
+          const newId = `routing-${Date.now()}-${Math.random()}`;
+          return {
+            ...r,
+            routingLogics: [
+              ...(r.routingLogics || []),
+              {
+                id: newId,
+                name: `Sub-Routing Logic ${(r.routingLogics?.length || 0) + 1}`,
+                condition: "",
+                action: "",
+                response: "",
+                informationGathering: [],
+                leadCaptureFields: [],
+                completionResponse: "",
+              } as typeof formData.baseLogic.routingLogics[0],
+            ],
+          };
+        }
+        if (r.routingLogics && r.routingLogics.length > 0) {
+          return { ...r, routingLogics: addToParent(r.routingLogics as typeof formData.baseLogic.routingLogics) };
+        }
+        return r;
+      });
+    };
+
+    setFormData({
+      ...formData,
+      baseLogic: {
+        ...formData.baseLogic,
+        routingLogics: addToParent(formData.baseLogic.routingLogics),
+      },
+    });
+  };
+
+  const removeNestedRoutingLogic = (id: string, parentId: string) => {
+    const removeFromParent = (routings: typeof formData.baseLogic.routingLogics): typeof formData.baseLogic.routingLogics => {
+      return routings.map((r) => {
+        if (r.id === parentId && r.routingLogics) {
+          return {
+            ...r,
+            routingLogics: (r.routingLogics as typeof formData.baseLogic.routingLogics).filter((nr) => nr.id !== id),
+          };
+        }
+        if (r.routingLogics && r.routingLogics.length > 0) {
+          return { ...r, routingLogics: removeFromParent(r.routingLogics as typeof formData.baseLogic.routingLogics) };
+        }
+        return r;
+      });
+    };
+
+    setFormData({
+      ...formData,
+      baseLogic: {
+        ...formData.baseLogic,
+        routingLogics: removeFromParent(formData.baseLogic.routingLogics),
       },
     });
   };
@@ -454,7 +581,8 @@ Call Summary:
   };
 
   return (
-    <Dialog open={open} onOpenChange={(open) => {
+    <>
+      <Dialog open={open} onOpenChange={(open) => {
       // Only allow closing via Cancel button, not by clicking outside or pressing ESC
       if (!open) {
         // Prevent closing - do nothing
@@ -505,6 +633,20 @@ Call Summary:
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Handles inbound sales inquiries"
               />
+            </div>
+            <div>
+              <Label htmlFor="agent-system-prompt">System Prompt</Label>
+              <Textarea
+                id="agent-system-prompt"
+                value={formData.systemPrompt}
+                onChange={(e) => setFormData({ ...formData, systemPrompt: e.target.value })}
+                placeholder="Enter a custom system prompt that will be prepended to the agent's instructions. This allows you to set the overall tone, personality, and behavior guidelines for the agent."
+                rows={4}
+                className="font-mono text-xs"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                This system prompt will be added at the beginning of the agent's instructions. Use this to define the agent's personality, tone, and core behavior principles.
+              </p>
             </div>
             <div>
               <Label htmlFor="agent-status">Initial Status</Label>
@@ -692,20 +834,53 @@ Call Summary:
               </div>
 
               {/* 2. Routing Logic Blocks (Dynamic) */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">2</div>
-                    <div>
-                      <h3 className="font-semibold text-sm">Routing Logic</h3>
-                      <p className="text-xs text-muted-foreground">Define routing blocks with condition, action, response, and data collection</p>
+              <Collapsible open={isRoutingOpen} onOpenChange={setIsRoutingOpen}>
+                <div className="space-y-4 p-4 bg-muted/30 rounded-lg border">
+                  <CollapsibleTrigger className="w-full">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">2</div>
+                        <div>
+                          <h3 className="font-semibold text-sm">Routing Logic</h3>
+                          <p className="text-xs text-muted-foreground">Define routing blocks with condition, action, response, and data collection</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex gap-2">
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setIsPreviewOpen(true);
+                            }}
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            Preview
+                          </Button>
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              addRoutingLogic();
+                            }}
+                          >
+                            <Plus className="h-4 w-4 mr-1" />
+                            Add Routing Logic
+                          </Button>
+                        </div>
+                        {isRoutingOpen ? (
+                          <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </div>
                     </div>
-                  </div>
-                  <Button type="button" variant="outline" size="sm" onClick={addRoutingLogic}>
-                    <Plus className="h-4 w-4 mr-1" />
-                    Add Routing Logic
-                  </Button>
-                </div>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-4 pt-4">
 
                 {formData.baseLogic.routingLogics.length === 0 && (
                   <div className="p-4 bg-muted/30 rounded-lg border border-dashed">
@@ -714,26 +889,50 @@ Call Summary:
                   </div>
                 )}
 
-                {formData.baseLogic.routingLogics.map((routing, routingIndex) => (
-                  <div key={routing.id} className="p-4 bg-muted/30 rounded-lg border space-y-4">
-                    <div className="flex items-center justify-between pb-3 border-b">
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-xs">
-                          {routingIndex + 1}
+                {formData.baseLogic.routingLogics.map((routing, routingIndex) => {
+                  const isBlockOpen = openRoutingBlocks.has(routing.id);
+                  return (
+                  <Collapsible key={routing.id} open={isBlockOpen} onOpenChange={() => toggleRoutingBlock(routing.id)}>
+                    <div className="p-4 bg-muted/30 rounded-lg border">
+                      <CollapsibleTrigger className="w-full">
+                        <div className="flex items-center justify-between pb-3 border-b">
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-xs">
+                              {routingIndex + 1}
+                            </div>
+                            <Input
+                              value={routing.name}
+                              onChange={(e) => {
+                                e.stopPropagation();
+                                updateRoutingLogic(routing.id, { name: e.target.value });
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                              placeholder="Routing Logic Name (e.g., Evolved Sound Route)"
+                              className="font-semibold border-0 bg-transparent p-0 h-auto"
+                            />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button 
+                              type="button" 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeRoutingLogic(routing.id);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                            {isBlockOpen ? (
+                              <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                            )}
+                          </div>
                         </div>
-                        <Input
-                          value={routing.name}
-                          onChange={(e) => updateRoutingLogic(routing.id, { name: e.target.value })}
-                          placeholder="Routing Logic Name (e.g., Evolved Sound Route)"
-                          className="font-semibold border-0 bg-transparent p-0 h-auto"
-                        />
-                      </div>
-                      <Button type="button" variant="ghost" size="sm" onClick={() => removeRoutingLogic(routing.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-
-                    {/* Routing Rules: Condition, Action, Response */}
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="space-y-4 pt-4">
+                        {/* Routing Rules: Condition, Action, Response */}
                     <div className="space-y-3">
                       <h4 className="text-sm font-medium">Routing Rules</h4>
                       <div>
@@ -792,6 +991,303 @@ Call Summary:
                           </Button>
                         </div>
                       ))}
+                    </div>
+
+                    {/* Nested Routing Logic */}
+                    {routing.routingLogics && routing.routingLogics.length > 0 && (
+                      <div className="pt-4 border-t space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-sm font-medium">Nested Routing Logic</h4>
+                          <Button type="button" variant="outline" size="sm" onClick={() => addNestedRoutingLogic(routing.id)}>
+                            <Plus className="h-3 w-3 mr-1" />
+                            Add Nested Routing
+                          </Button>
+                        </div>
+                        <div className="ml-4 space-y-3 border-l-2 border-primary/20 pl-4">
+                          {routing.routingLogics.map((nestedRouting, nestedIndex) => {
+                            const isNestedOpen = openNestedRoutingBlocks.has(nestedRouting.id);
+                            return (
+                            <Collapsible key={nestedRouting.id} open={isNestedOpen} onOpenChange={() => toggleNestedRoutingBlock(nestedRouting.id)}>
+                              <div className="p-4 bg-muted/20 rounded-lg border">
+                                <CollapsibleTrigger className="w-full">
+                                  <div className="flex items-center justify-between pb-2 border-b">
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-5 h-5 rounded-full bg-primary/30 text-primary flex items-center justify-center font-bold text-xs">
+                                        {nestedIndex + 1}
+                                      </div>
+                                      <Input
+                                        value={nestedRouting.name}
+                                        onChange={(e) => {
+                                          e.stopPropagation();
+                                          const updated = [...(routing.routingLogics || [])];
+                                          updated[nestedIndex] = { ...updated[nestedIndex], name: e.target.value };
+                                          updateRoutingLogic(routing.id, { routingLogics: updated as any });
+                                        }}
+                                        onClick={(e) => e.stopPropagation()}
+                                        placeholder="Nested Routing Logic Name"
+                                        className="font-semibold border-0 bg-transparent p-0 h-auto text-xs"
+                                      />
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <Button 
+                                        type="button" 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          removeNestedRoutingLogic(nestedRouting.id, routing.id);
+                                        }}
+                                      >
+                                        <Trash2 className="h-3 w-3" />
+                                      </Button>
+                                      {isNestedOpen ? (
+                                        <ChevronUp className="h-3 w-3 text-muted-foreground" />
+                                      ) : (
+                                        <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                                      )}
+                                    </div>
+                                  </div>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent className="space-y-3 pt-3">
+                                  {/* Nested Routing Rules */}
+                              <div className="space-y-2">
+                                <div>
+                                  <Label className="text-xs text-muted-foreground mb-1 block">Condition</Label>
+                                  <Input
+                                    value={nestedRouting.condition}
+                                    onChange={(e) => {
+                                      const updated = [...(routing.routingLogics || [])];
+                                      updated[nestedIndex] = { ...updated[nestedIndex], condition: e.target.value };
+                                      updateRoutingLogic(routing.id, { routingLogics: updated as any });
+                                    }}
+                                    placeholder='e.g., caller says "Voice Over"'
+                                    className="text-xs"
+                                  />
+                                </div>
+                                <div>
+                                  <Label className="text-xs text-muted-foreground mb-1 block">Action</Label>
+                                  <Input
+                                    value={nestedRouting.action}
+                                    onChange={(e) => {
+                                      const updated = [...(routing.routingLogics || [])];
+                                      updated[nestedIndex] = { ...updated[nestedIndex], action: e.target.value };
+                                      updateRoutingLogic(routing.id, { routingLogics: updated as any });
+                                    }}
+                                    placeholder='e.g., Route to Voice Over logic'
+                                    className="text-xs"
+                                  />
+                                </div>
+                                <div>
+                                  <Label className="text-xs text-muted-foreground mb-1 block">Response</Label>
+                                  <Textarea
+                                    value={nestedRouting.response}
+                                    onChange={(e) => {
+                                      const updated = [...(routing.routingLogics || [])];
+                                      updated[nestedIndex] = { ...updated[nestedIndex], response: e.target.value };
+                                      updateRoutingLogic(routing.id, { routingLogics: updated as any });
+                                    }}
+                                    placeholder='e.g., Great! What type of voice over project do you need?'
+                                    rows={2}
+                                    className="text-xs"
+                                  />
+                                </div>
+                              </div>
+                              {/* Nested Information Gathering */}
+                              <div className="pt-2 border-t space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <h5 className="text-xs font-medium">Information Gathering</h5>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      const updated = [...(routing.routingLogics || [])];
+                                      const nested = { ...updated[nestedIndex] };
+                                      nested.informationGathering = [...(nested.informationGathering || []), { question: "" }];
+                                      updated[nestedIndex] = nested;
+                                      updateRoutingLogic(routing.id, { routingLogics: updated as any });
+                                    }}
+                                  >
+                                    <Plus className="h-2 w-2 mr-1" />
+                                    Add
+                                  </Button>
+                                </div>
+                                {nestedRouting.informationGathering?.map((item, infoIndex) => (
+                                  <div key={infoIndex} className="flex gap-2">
+                                    <Input
+                                      value={item.question}
+                                      onChange={(e) => {
+                                        const updated = [...(routing.routingLogics || [])];
+                                        const nested = { ...updated[nestedIndex] };
+                                        const infoUpdated = [...(nested.informationGathering || [])];
+                                        infoUpdated[infoIndex] = { question: e.target.value };
+                                        nested.informationGathering = infoUpdated;
+                                        updated[nestedIndex] = nested;
+                                        updateRoutingLogic(routing.id, { routingLogics: updated as any });
+                                      }}
+                                      placeholder="Information question"
+                                      className="flex-1 text-xs"
+                                    />
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => {
+                                        const updated = [...(routing.routingLogics || [])];
+                                        const nested = { ...updated[nestedIndex] };
+                                        nested.informationGathering = (nested.informationGathering || []).filter((_, i) => i !== infoIndex);
+                                        updated[nestedIndex] = nested;
+                                        updateRoutingLogic(routing.id, { routingLogics: updated as any });
+                                      }}
+                                    >
+                                      <X className="h-2 w-2" />
+                                    </Button>
+                                  </div>
+                                ))}
+                              </div>
+                              {/* Nested Lead Capture */}
+                              <div className="pt-2 border-t space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <h5 className="text-xs font-medium">Lead Capture Fields</h5>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      const updated = [...(routing.routingLogics || [])];
+                                      const nested = { ...updated[nestedIndex] };
+                                      nested.leadCaptureFields = [...(nested.leadCaptureFields || []), { name: "", question: "", required: false, type: "text" as const }];
+                                      updated[nestedIndex] = nested;
+                                      updateRoutingLogic(routing.id, { routingLogics: updated as any });
+                                    }}
+                                  >
+                                    <Plus className="h-2 w-2 mr-1" />
+                                    Add
+                                  </Button>
+                                </div>
+                                {nestedRouting.leadCaptureFields?.map((field, fieldIndex) => (
+                                  <div key={fieldIndex} className="p-2 bg-secondary/50 rounded space-y-1">
+                                    <div className="flex justify-between items-center">
+                                      <span className="text-xs font-medium">Field #{fieldIndex + 1}</span>
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                          const updated = [...(routing.routingLogics || [])];
+                                          const nested = { ...updated[nestedIndex] };
+                                          nested.leadCaptureFields = (nested.leadCaptureFields || []).filter((_, i) => i !== fieldIndex);
+                                          updated[nestedIndex] = nested;
+                                          updateRoutingLogic(routing.id, { routingLogics: updated as any });
+                                        }}
+                                      >
+                                        <X className="h-2 w-2" />
+                                      </Button>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-1">
+                                      <Input
+                                        value={field.name}
+                                        onChange={(e) => {
+                                          const updated = [...(routing.routingLogics || [])];
+                                          const nested = { ...updated[nestedIndex] };
+                                          const fieldsUpdated = [...(nested.leadCaptureFields || [])];
+                                          fieldsUpdated[fieldIndex] = { ...fieldsUpdated[fieldIndex], name: e.target.value };
+                                          nested.leadCaptureFields = fieldsUpdated;
+                                          updated[nestedIndex] = nested;
+                                          updateRoutingLogic(routing.id, { routingLogics: updated as any });
+                                        }}
+                                        placeholder="Field name"
+                                        className="text-xs"
+                                      />
+                                      <Select
+                                        value={field.type}
+                                        onValueChange={(value: "text" | "email" | "phone" | "number") => {
+                                          const updated = [...(routing.routingLogics || [])];
+                                          const nested = { ...updated[nestedIndex] };
+                                          const fieldsUpdated = [...(nested.leadCaptureFields || [])];
+                                          fieldsUpdated[fieldIndex] = { ...fieldsUpdated[fieldIndex], type: value };
+                                          nested.leadCaptureFields = fieldsUpdated;
+                                          updated[nestedIndex] = nested;
+                                          updateRoutingLogic(routing.id, { routingLogics: updated as any });
+                                        }}
+                                      >
+                                        <SelectTrigger className="text-xs h-7">
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="text">Text</SelectItem>
+                                          <SelectItem value="email">Email</SelectItem>
+                                          <SelectItem value="phone">Phone</SelectItem>
+                                          <SelectItem value="number">Number</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                    <Input
+                                      value={field.question}
+                                      onChange={(e) => {
+                                        const updated = [...(routing.routingLogics || [])];
+                                        const nested = { ...updated[nestedIndex] };
+                                        const fieldsUpdated = [...(nested.leadCaptureFields || [])];
+                                        fieldsUpdated[fieldIndex] = { ...fieldsUpdated[fieldIndex], question: e.target.value };
+                                        nested.leadCaptureFields = fieldsUpdated;
+                                        updated[nestedIndex] = nested;
+                                        updateRoutingLogic(routing.id, { routingLogics: updated as any });
+                                      }}
+                                      placeholder="Question to ask"
+                                      className="text-xs"
+                                    />
+                                    <div className="flex items-center gap-2">
+                                      <input
+                                        type="checkbox"
+                                        checked={field.required}
+                                        onChange={(e) => {
+                                          const updated = [...(routing.routingLogics || [])];
+                                          const nested = { ...updated[nestedIndex] };
+                                          const fieldsUpdated = [...(nested.leadCaptureFields || [])];
+                                          fieldsUpdated[fieldIndex] = { ...fieldsUpdated[fieldIndex], required: e.target.checked };
+                                          nested.leadCaptureFields = fieldsUpdated;
+                                          updated[nestedIndex] = nested;
+                                          updateRoutingLogic(routing.id, { routingLogics: updated as any });
+                                        }}
+                                        className="rounded"
+                                      />
+                                      <Label className="text-xs cursor-pointer">Required</Label>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                              {/* Nested Completion Response */}
+                              <div className="pt-2 border-t space-y-2">
+                                <h5 className="text-xs font-medium">Completion Response</h5>
+                                <Textarea
+                                  value={nestedRouting.completionResponse || ""}
+                                  onChange={(e) => {
+                                    const updated = [...(routing.routingLogics || [])];
+                                    const nested = { ...updated[nestedIndex] };
+                                    nested.completionResponse = e.target.value;
+                                    updated[nestedIndex] = nested;
+                                    updateRoutingLogic(routing.id, { routingLogics: updated as any });
+                                  }}
+                                  placeholder="Response after collecting information"
+                                  rows={2}
+                                  className="text-xs"
+                                />
+                              </div>
+                                </CollapsibleContent>
+                              </div>
+                            </Collapsible>
+                          );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Add Nested Routing Logic Button */}
+                    <div className="pt-2 border-t">
+                      <Button type="button" variant="outline" size="sm" onClick={() => addNestedRoutingLogic(routing.id)} className="w-full">
+                        <Plus className="h-3 w-3 mr-1" />
+                        Add Nested Routing Logic
+                      </Button>
                     </div>
 
                     {/* Lead Capture Fields (Inside Routing Logic) */}
@@ -873,20 +1369,35 @@ Call Summary:
                         </div>
                       ))}
                     </div>
-                  </div>
-                ))}
-              </div>
+                      </CollapsibleContent>
+                    </div>
+                  </Collapsible>
+                );
+                })}
+                  </CollapsibleContent>
+                </div>
+              </Collapsible>
 
               {/* 3. Summary / Email Template */}
-              <div className="space-y-4 p-4 bg-muted/30 rounded-lg border">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">3</div>
-                  <div>
-                    <h3 className="font-semibold text-sm">Summary / Email Template</h3>
-                    <p className="text-xs text-muted-foreground">Email will be sent to client (caller) after call ends with exact information collected</p>
-                  </div>
-                </div>
-                <div className="space-y-3">
+              <Collapsible open={isEmailTemplateOpen} onOpenChange={setIsEmailTemplateOpen}>
+                <div className="p-4 bg-muted/30 rounded-lg border">
+                  <CollapsibleTrigger className="w-full">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">3</div>
+                        <div>
+                          <h3 className="font-semibold text-sm">Summary / Email Template</h3>
+                          <p className="text-xs text-muted-foreground">Email will be sent to client (caller) after call ends with exact information collected</p>
+                        </div>
+                      </div>
+                      {isEmailTemplateOpen ? (
+                        <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </div>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-3 pt-4">
                   <div className="p-3 bg-secondary rounded-lg">
                     <p className="text-xs font-medium mb-1">Email Recipient:</p>
                     <p className="text-xs text-muted-foreground">
@@ -950,19 +1461,30 @@ Call Summary:
                       Use {"{{FieldName}}"} placeholders. Available fields: CompanyName, CallerName, PhoneNumber, Email, ServiceType, Budget, BusinessType, CompanySize, Timeline, AgentGeneratedSummary
                     </p>
                   </div>
+                  </CollapsibleContent>
                 </div>
-              </div>
+              </Collapsible>
 
               {/* 4. Fallback / Escalation Rules */}
-              <div className="space-y-4 p-4 bg-muted/30 rounded-lg border">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">4</div>
-                  <div>
-                    <h3 className="font-semibold text-sm">Fallback / Escalation Rules</h3>
-                    <p className="text-xs text-muted-foreground">What the agent should say/do if it cannot understand the caller</p>
-                  </div>
-                </div>
-                <div className="space-y-3">
+              <Collapsible open={isFallbackOpen} onOpenChange={setIsFallbackOpen}>
+                <div className="p-4 bg-muted/30 rounded-lg border">
+                  <CollapsibleTrigger className="w-full">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">4</div>
+                        <div>
+                          <h3 className="font-semibold text-sm">Fallback / Escalation Rules</h3>
+                          <p className="text-xs text-muted-foreground">What the agent should say/do if it cannot understand the caller</p>
+                        </div>
+                      </div>
+                      {isFallbackOpen ? (
+                        <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </div>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-3 pt-4">
                   <div>
                     <Label>First Attempt (Unclear Response)</Label>
                     <Textarea
@@ -998,8 +1520,9 @@ Call Summary:
                       Message to say after 2 failed attempts to understand the caller
                     </p>
                   </div>
+                  </CollapsibleContent>
                 </div>
-              </div>
+              </Collapsible>
 
             </div>
           </div>
@@ -1015,6 +1538,15 @@ Call Summary:
         </div>
       </DialogContent>
     </Dialog>
+
+    {/* Routing Preview Dialog */}
+    <RoutingPreview
+      open={isPreviewOpen}
+      onOpenChange={setIsPreviewOpen}
+      greetingMessage={formData.baseLogic.greetingMessage}
+      routingLogics={formData.baseLogic.routingLogics}
+    />
+    </>
   );
 }
 
