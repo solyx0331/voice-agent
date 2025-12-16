@@ -105,15 +105,15 @@ export function VoiceAgentCard({ id, name, description, status, calls, avgDurati
               config.color
             )} />
           </div>
-          <div>
-            <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">{name}</h3>
-            <p className="text-sm text-muted-foreground">{description}</p>
+          <div className="flex-1">
+            <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors mb-2">{name}</h3>
             {phoneNumber && (
-              <div className="flex items-center gap-1.5 mt-2 p-1.5 bg-primary/5 rounded-md border border-primary/10">
-                <Phone className="h-3.5 w-3.5 text-primary flex-shrink-0" />
-                <span className="text-xs font-medium text-foreground">{phoneNumber}</span>
+              <div className="flex items-center gap-2 mb-2 px-3 py-2 bg-primary/10 rounded-lg border-2 border-primary/20">
+                <Phone className="h-4 w-4 text-primary flex-shrink-0" />
+                <span className="text-sm font-semibold text-primary">{phoneNumber}</span>
               </div>
             )}
+            <p className="text-sm text-muted-foreground">{description}</p>
           </div>
         </div>
         <DropdownMenu>
@@ -454,21 +454,29 @@ export function VoiceAgentCard({ id, name, description, status, calls, avgDurati
         </AlertDialog>
       </div>
 
-      <div className="flex items-center justify-between pt-4 mt-auto border-t border-border">
-        <div className="flex items-center gap-2 text-xs sm:text-sm">
-          <span className={cn(
-            "rounded-full",
-            status === "active" ? "h-3 w-3 ring-2 ring-emerald-500/30 shadow-sm" : "h-2 w-2",
-            config.color
-          )} />
-          <span className="text-muted-foreground">{config.label}</span>
-        </div>
-        <div className="flex items-center gap-3 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
-          <div className="flex items-center gap-1">
-            <Phone className="h-3 w-3 sm:h-4 sm:w-4" />
-            <span>{calls} calls</span>
+      <div className="pt-4 mt-auto border-t border-border space-y-3">
+        {phoneNumber && (
+          <div className="flex items-center justify-center gap-2 px-3 py-2.5 bg-primary/10 rounded-lg border-2 border-primary/30">
+            <Phone className="h-4 w-4 text-primary flex-shrink-0" />
+            <span className="text-base font-bold text-primary">{phoneNumber}</span>
           </div>
-          <span>Avg: {avgDuration}</span>
+        )}
+        <div className="flex items-center justify-between text-xs sm:text-sm">
+          <div className="flex items-center gap-2">
+            <span className={cn(
+              "rounded-full",
+              status === "active" ? "h-3 w-3 ring-2 ring-emerald-500/30 shadow-sm" : "h-2 w-2",
+              config.color
+            )} />
+            <span className="text-muted-foreground">{config.label}</span>
+          </div>
+          <div className="flex items-center gap-3 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
+            <div className="flex items-center gap-1">
+              <Phone className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span>{calls} calls</span>
+            </div>
+            <span>Avg: {avgDuration}</span>
+          </div>
         </div>
       </div>
     </div>
