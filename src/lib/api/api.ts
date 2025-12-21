@@ -153,12 +153,26 @@ class ApiService {
   }
 
   async createWebCallTest(agentId: string): Promise<{ callId: string; token: string; status: string; type: string }> {
-    return await this.request<{ callId: string; token: string; status: string; type: string }>(
-      `/agents/${agentId}/test/web-call`,
-      {
-        method: "POST",
-      }
-    );
+    try {
+      const response = await this.request<any>(
+        `/agents/${agentId}/test/web-call`,
+        {
+          method: "POST",
+        }
+      );
+      
+      // Handle both camelCase and snake_case response formats
+      // Retell API returns access_token (not token)
+      return {
+        callId: response.callId || response.call_id || "",
+        token: response.access_token || response.token || "",
+        status: response.status || "created",
+        type: response.type || "web",
+      };
+    } catch (error: any) {
+      console.error("Failed to create web call test:", error);
+      throw error;
+    }
   }
 
   async deleteAgent(agentId: string): Promise<void> {
