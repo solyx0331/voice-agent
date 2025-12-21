@@ -5,14 +5,16 @@ import { Phone, PhoneOff, Mic, MicOff, Volume2, VolumeX } from "lucide-react";
 import { toast } from "sonner";
 import { apiService } from "@/lib/api/api";
 
-// Try to import Retell SDK, but make it optional
+// Import Retell SDK with error handling
 let RetellWebClient: any = null;
 try {
-  // @ts-ignore - Retell SDK may not be installed
   const retellSdk = require("retell-client-js-sdk");
-  RetellWebClient = retellSdk.RetellWebClient || retellSdk.default?.RetellWebClient;
-} catch (e) {
-  console.log("Retell SDK not available, will use fallback WebRTC");
+  RetellWebClient = retellSdk.RetellWebClient || retellSdk.default?.RetellWebClient || retellSdk.default;
+  if (!RetellWebClient) {
+    console.error("RetellWebClient not found in SDK module:", Object.keys(retellSdk));
+  }
+} catch (e: any) {
+  console.error("Failed to import Retell SDK:", e);
 }
 
 interface WebPhoneTestProps {
@@ -113,11 +115,16 @@ export function WebPhoneTest({ open, onOpenChange, agentId, agentName }: WebPhon
 
       setCallId(response.callId);
 
-      // Use Retell Web SDK if available, otherwise fall back to manual WebRTC
+      // Use Retell Web SDK (official SDK)
+      if (!RetellWebClient) {
+        throw new Error("Retell SDK is not available. Please ensure retell-client-js-sdk is installed.");
+      }
+
       try {
-        if (RetellWebClient) {
-          // Use Retell Web SDK (official SDK)
-          const retellClient = new RetellWebClient();
+        console.log("Initializing Retell Web Client...");
+        // Use Retell Web SDK
+        const retellClient = new RetellWebClient();
+        console.log("Retell Web Client initialized successfully");
 
           // Set up event handlers before starting call
           retellClient.on("call_started", () => {
@@ -148,142 +155,20 @@ export function WebPhoneTest({ open, onOpenChange, agentId, agentName }: WebPhon
           retellClientRef.current = retellClient;
 
           // Start the call
-          console.log("Starting Retell web call with token:", response.token.substring(0, 20) + "...");
+          console.log("Starting Retell web call with callId:", response.callId, "token length:", response.token?.length || 0);
           await retellClient.startCall({
             accessToken: response.token,
             sampleRate: 24000,
           });
           
-          console.log("Retell call started successfully");
-        } else {
-          // SDK not available, use manual WebRTC
-          throw new Error("Retell SDK not available");
-        }
+          console.log("Retell startCall promise resolved successfully");
       } catch (sdkError: any) {
-        console.error("Retell SDK error or not available:", sdkError);
-        // If SDK fails or is not available, fall back to manual WebRTC
-        console.log("Falling back to manual WebRTC implementation");
-        
-        // Fallback: Manual WebRTC implementation
-        const pc = new RTCPeerConnection({
-          iceServers: [
-            { urls: "stun:stun.l.google.com:19302" },
-          ],
-        });
-
-        // Add local audio tracks
-        stream.getTracks().forEach(track => {
-          pc.addTrack(track, stream);
-        });
-
-        // Handle remote audio
-        pc.ontrack = (event) => {
-          const [remoteStream] = event.streams;
-          const audio = new Audio();
-          audio.srcObject = remoteStream;
-          audio.autoplay = true;
-          audio.volume = isSpeakerMuted ? 0 : 1;
-          if (audioContextRef.current) {
-            audioContextRef.current.close();
-          }
-          audioContextRef.current = new AudioContext();
-        };
-
-        peerConnectionRef.current = pc;
-
-        // Connect to Retell using WebSocket
-        const ws = new WebSocket(`wss://api.retellai.com/websocket/${response.callId}?token=${response.token}`);
-        websocketRef.current = ws;
-        
-          ws.onopen = () => {
-            console.log("WebSocket connected successfully");
-            setIsConnecting(false);
-            setIsConnected(true);
-            toast.success("Connected to agent");
-            // Keep connection alive - don't auto-disconnect
-          };
-
-        ws.onmessage = async (event) => {
-          try {
-            const message = JSON.parse(event.data);
-            console.log("WebSocket message received:", message);
-            
-            if (message.type === "offer") {
-              await pc.setRemoteDescription(new RTCSessionDescription(message));
-              const answer = await pc.createAnswer();
-              await pc.setLocalDescription(answer);
-              ws.send(JSON.stringify({ type: "answer", sdp: answer.sdp }));
-            } else if (message.type === "ice-candidate") {
-              await pc.addIceCandidate(new RTCIceCandidate(message.candidate));
-            } else if (message.type === "call_ended" || message.event === "call_ended") {
-              console.log("Call ended by server");
-              // Don't immediately disconnect - let user see the call ended
-              setTimeout(() => {
-                handleEndCall();
-              }, 1000);
-            }
-          } catch (error: any) {
-            console.error("Error processing WebSocket message:", error);
-          }
-        };
-
-        ws.onerror = (error) => {
-          console.error("WebSocket error:", error);
-          setError("Connection error. Please try again.");
-          // Don't immediately disconnect on error, let user see the error
-          setTimeout(() => {
-            handleEndCall();
-          }, 2000);
-        };
-
-        ws.onclose = (event) => {
-          console.log("WebSocket closed:", event.code, event.reason, "wasClean:", event.wasClean, "Current isConnected:", isConnected);
-          // Clear WebSocket ref
-          websocketRef.current = null;
-          
-          // Capture connection state at time of close
-          const wasConnectedAtClose = isConnected;
-          
-          // Only handle disconnection if we were actually connected
-          if (wasConnectedAtClose) {
-            // If it's an abnormal closure, show error and disconnect
-            if (!event.wasClean || event.code !== 1000) {
-              console.log("Abnormal WebSocket closure, will disconnect after delay");
-              setError(`Connection closed: ${event.reason || `Code ${event.code}`}`);
-              // Delay disconnect to allow user to see the error
-              setTimeout(() => {
-                // Only disconnect if still connected
-                if (isConnected) {
-                  console.log("Disconnecting due to WebSocket close");
-                  handleEndCall();
-                }
-              }, 3000);
-            } else {
-              // Normal close (code 1000) - might be intentional, don't auto-disconnect
-              console.log("Normal WebSocket close, keeping UI visible");
-            }
-          } else {
-            // Wasn't connected - clean up silently
-            console.log("WebSocket closed but wasn't connected, cleaning up");
-            handleEndCall();
-          }
-        };
-
-        // Handle peer connection state changes
-        pc.onconnectionstatechange = () => {
-          console.log("Peer connection state:", pc.connectionState);
-          if (pc.connectionState === "failed" || pc.connectionState === "disconnected") {
-            console.log("Peer connection failed or disconnected");
-          }
-        };
-
-        pc.oniceconnectionstatechange = () => {
-          console.log("ICE connection state:", pc.iceConnectionState);
-          if (pc.iceConnectionState === "failed") {
-            console.log("ICE connection failed");
-            setError("Connection failed. Please check your network.");
-          }
-        };
+        console.error("Retell SDK error:", sdkError);
+        // If SDK fails, show error
+        setError(`Failed to start call: ${sdkError.message || "Unknown error"}`);
+        setIsConnecting(false);
+        cleanup();
+        throw sdkError;
       }
 
     } catch (error: any) {
