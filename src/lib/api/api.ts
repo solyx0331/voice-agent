@@ -152,6 +152,15 @@ class ApiService {
     return this.transformDocument<VoiceAgent>(updated);
   }
 
+  async createWebCallTest(agentId: string): Promise<{ callId: string; token: string; status: string; type: string }> {
+    return await this.request<{ callId: string; token: string; status: string; type: string }>(
+      `/agents/${agentId}/test/web-call`,
+      {
+        method: "POST",
+      }
+    );
+  }
+
   async deleteAgent(agentId: string): Promise<void> {
     await this.request(`/agents/${agentId}`, {
       method: "DELETE",

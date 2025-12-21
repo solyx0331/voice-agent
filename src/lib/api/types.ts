@@ -113,6 +113,10 @@ export interface VoiceAgent {
       includeInEmail: boolean;
     }>;
   };
+  // Ambient sound settings
+  ambientSound?: "coffee-shop" | "convention-hall" | "summer-outdoor" | "mountain-outdoor" | "static-noise" | "call-center"; // Ambient background sound type
+  ambientSoundVolume?: number; // Ambient sound volume (0-2, default: 1)
+
   // Base Receptionist Logic
   baseLogic?: {
     greetingMessage: string;

@@ -90,6 +90,8 @@ export function AgentConfigDialog({ open, onOpenChange, agent, onSave, isSaving 
       customVoiceUrl: "",
     },
     greetingScript: "",
+    ambientSound: undefined as "coffee-shop" | "convention-hall" | "summer-outdoor" | "mountain-outdoor" | "static-noise" | "call-center" | undefined,
+    ambientSoundVolume: 1.0, // Default volume
     faqs: [] as Array<{ question: string; answer: string }>,
     intents: [] as Array<{ name: string; prompt: string; response?: string }>,
     callRules: {
@@ -282,6 +284,8 @@ Call Summary:
             leadCaptureFields: agent.leadCapture?.fields || [],
           })) : []),
         },
+        ambientSound: agent.ambientSound,
+        ambientSoundVolume: agent.ambientSoundVolume ?? 1.0,
       });
     } else {
       // Reset form for new agent
@@ -297,6 +301,8 @@ Call Summary:
           customVoiceUrl: "",
         },
         greetingScript: "",
+        ambientSound: undefined,
+        ambientSoundVolume: 1.0,
         faqs: [],
         intents: [],
         callRules: {
@@ -794,6 +800,70 @@ Call Summary:
                       );
                     })()}
                   </div>
+                </div>
+              )}
+            </div>
+
+            {/* Ambient Sound Configuration */}
+            <div className="pt-4 border-t space-y-4">
+              <h3 className="font-semibold text-sm">Background Sound</h3>
+              <p className="text-xs text-muted-foreground">
+                Add ambient background sounds to create a more realistic call environment.
+              </p>
+              
+              <div>
+                <Label htmlFor="ambient-sound">Background Sound Type</Label>
+                <Select
+                  value={formData.ambientSound || "none"}
+                  onValueChange={(value) => setFormData({
+                    ...formData,
+                    ambientSound: value === "none" ? undefined : value as any,
+                  })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select background sound (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    <SelectItem value="call-center">Call Center</SelectItem>
+                    <SelectItem value="coffee-shop">Coffee Shop</SelectItem>
+                    <SelectItem value="convention-hall">Convention Hall</SelectItem>
+                    <SelectItem value="summer-outdoor">Summer Outdoor</SelectItem>
+                    <SelectItem value="mountain-outdoor">Mountain Outdoor</SelectItem>
+                    <SelectItem value="static-noise">Static Noise</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Choose a background sound effect to enhance call realism
+                </p>
+              </div>
+
+              {formData.ambientSound && (
+                <div>
+                  <Label htmlFor="ambient-sound-volume">
+                    Background Sound Volume: {formData.ambientSoundVolume.toFixed(1)}
+                  </Label>
+                  <input
+                    type="range"
+                    id="ambient-sound-volume"
+                    min="0"
+                    max="2"
+                    step="0.1"
+                    value={formData.ambientSoundVolume}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      ambientSoundVolume: parseFloat(e.target.value),
+                    })}
+                    className="w-full mt-2"
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                    <span>Quiet (0.0)</span>
+                    <span>Normal (1.0)</span>
+                    <span>Loud (2.0)</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Adjust the volume of the background sound (0-2, default: 1.0)
+                  </p>
                 </div>
               )}
             </div>

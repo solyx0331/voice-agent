@@ -10,6 +10,7 @@ import { useState, useEffect } from "react";
 import { useUpdateAgent, useDeleteAgent, useAgentDetails } from "@/hooks/useVoiceAgents";
 import { VoiceAgent, Call } from "@/lib/api/types";
 import { AgentConfigDialog } from "@/components/dashboard/AgentConfigDialog";
+import { WebPhoneTest } from "@/components/dashboard/WebPhoneTest";
 import { apiService } from "@/lib/api/api";
 
 interface VoiceAgentCardProps {
@@ -33,6 +34,7 @@ export function VoiceAgentCard({ id, name, description, status, calls, avgDurati
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [isTestOpen, setIsTestOpen] = useState(false);
   const [recentCalls, setRecentCalls] = useState<Call[]>([]);
   const [isLoadingCalls, setIsLoadingCalls] = useState(false);
   
@@ -125,6 +127,13 @@ export function VoiceAgentCard({ id, name, description, status, calls, avgDurati
           <DropdownMenuContent align="end">
             <DropdownMenuItem onSelect={(e) => {
               e.preventDefault();
+              setIsTestOpen(true);
+            }}>
+              <Phone className="h-4 w-4 mr-2" />
+              Test Agent
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={(e) => {
+              e.preventDefault();
               setIsEditOpen(true);
             }}>
               Edit Agent
@@ -154,6 +163,14 @@ export function VoiceAgentCard({ id, name, description, status, calls, avgDurati
           agent={agentDetails || undefined}
           onSave={handleEdit}
           isSaving={updateAgent.isPending}
+        />
+
+        {/* Test Agent Dialog */}
+        <WebPhoneTest
+          open={isTestOpen}
+          onOpenChange={setIsTestOpen}
+          agentId={id}
+          agentName={name}
         />
 
         {/* View Details Dialog */}
