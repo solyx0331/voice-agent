@@ -5,18 +5,6 @@ import { Phone, PhoneOff, Mic, MicOff, Volume2, VolumeX } from "lucide-react";
 import { toast } from "sonner";
 import { apiService } from "@/lib/api/api";
 
-// Import Retell SDK with error handling
-let RetellWebClient: any = null;
-try {
-  const retellSdk = require("retell-client-js-sdk");
-  RetellWebClient = retellSdk.RetellWebClient || retellSdk.default?.RetellWebClient || retellSdk.default;
-  if (!RetellWebClient) {
-    console.error("RetellWebClient not found in SDK module:", Object.keys(retellSdk));
-  }
-} catch (e: any) {
-  console.error("Failed to import Retell SDK:", e);
-}
-
 interface WebPhoneTestProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -116,14 +104,19 @@ export function WebPhoneTest({ open, onOpenChange, agentId, agentName }: WebPhon
       setCallId(response.callId);
 
       // Use Retell Web SDK (official SDK)
-      if (!RetellWebClient) {
-        throw new Error("Retell SDK is not available. Please ensure retell-client-js-sdk is installed.");
-      }
-
       try {
+        console.log("Loading Retell SDK...");
+        // Dynamically import Retell SDK to handle potential import issues
+        const retellSdk = await import("retell-client-js-sdk");
+        const RetellWebClientClass = retellSdk.RetellWebClient || retellSdk.default?.RetellWebClient || retellSdk.default;
+        
+        if (!RetellWebClientClass) {
+          throw new Error("RetellWebClient not found in SDK module. Available exports: " + Object.keys(retellSdk).join(", "));
+        }
+        
         console.log("Initializing Retell Web Client...");
         // Use Retell Web SDK
-        const retellClient = new RetellWebClient();
+        const retellClient = new (RetellWebClientClass as any)();
         console.log("Retell Web Client initialized successfully");
 
           // Set up event handlers before starting call
