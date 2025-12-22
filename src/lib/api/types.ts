@@ -157,6 +157,8 @@ export interface VoiceAgent {
   // Ambient sound settings
   ambientSound?: "coffee-shop" | "convention-hall" | "summer-outdoor" | "mountain-outdoor" | "static-noise" | "call-center"; // Ambient background sound type
   ambientSoundVolume?: number; // Ambient sound volume (0-2, default: 1)
+  // Call recording settings
+  enableRecording?: boolean; // Whether to record calls (default: true)
 
   // Base Receptionist Logic
   baseLogic?: {

@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { X, Plus, Trash2, Clock, Mail, Globe, Eye, ChevronDown, ChevronUp } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { RoutingPreview } from "./RoutingPreview";
@@ -98,6 +99,7 @@ export function AgentConfigDialog({ open, onOpenChange, agent, onSave, isSaving 
     greetingScript: "",
     ambientSound: undefined as "coffee-shop" | "convention-hall" | "summer-outdoor" | "mountain-outdoor" | "static-noise" | "call-center" | undefined,
     ambientSoundVolume: 1.0, // Default volume
+    enableRecording: true, // Default to enabled
     faqs: [] as Array<{ question: string; answer: string }>,
     intents: [] as Array<{ name: string; prompt: string; response?: string }>,
     intentDefinitions: [] as IntentDefinition[],
@@ -298,6 +300,7 @@ Call Summary:
         },
         ambientSound: agent.ambientSound,
         ambientSoundVolume: agent.ambientSoundVolume ?? 1.0,
+        enableRecording: agent.enableRecording !== undefined ? agent.enableRecording : true,
       });
     } else {
       // Reset form for new agent
@@ -315,6 +318,7 @@ Call Summary:
         greetingScript: "",
         ambientSound: undefined,
         ambientSoundVolume: 1.0,
+        enableRecording: true,
         faqs: [],
         intents: [],
         intentDefinitions: [],
@@ -878,6 +882,37 @@ Call Summary:
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
                     Adjust the volume of the background sound (0-2, default: 1.0)
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Call Recording Configuration */}
+            <div className="pt-4 border-t space-y-4">
+              <h3 className="font-semibold text-sm">Call Recording</h3>
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <Label htmlFor="enable-recording" className="text-base">
+                    Enable Call Recording
+                  </Label>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    When enabled, calls will be recorded and available for playback in call history. 
+                    Recordings are useful for quality assurance, training, and compliance purposes.
+                  </p>
+                </div>
+                <Switch
+                  id="enable-recording"
+                  checked={formData.enableRecording !== false}
+                  onCheckedChange={(checked) => setFormData({
+                    ...formData,
+                    enableRecording: checked,
+                  })}
+                />
+              </div>
+              {formData.enableRecording === false && (
+                <div className="p-3 bg-muted rounded-lg">
+                  <p className="text-sm text-muted-foreground">
+                    ⚠️ Call recording is disabled. No audio recordings will be saved for calls made with this agent.
                   </p>
                 </div>
               )}
