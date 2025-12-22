@@ -6,10 +6,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { X, Plus, Trash2, GripVertical } from "lucide-react";
+import { X, Plus, Trash2, GripVertical, Copy } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 
 export interface FieldSchema {
   id: string;
@@ -37,9 +39,10 @@ export interface FieldSchema {
 interface FieldSchemaDesignerProps {
   fields: FieldSchema[];
   onFieldsChange: (fields: FieldSchema[]) => void;
+  availableGlobalFields?: FieldSchema[]; // Optional: global fields that can be selected/reused
 }
 
-export function FieldSchemaDesigner({ fields, onFieldsChange }: FieldSchemaDesignerProps) {
+export function FieldSchemaDesigner({ fields, onFieldsChange, availableGlobalFields = [] }: FieldSchemaDesignerProps) {
   const [openFields, setOpenFields] = useState<Set<string>>(new Set());
 
   // Default regex patterns and error messages for email and phone
@@ -67,6 +70,17 @@ export function FieldSchemaDesigner({ fields, onFieldsChange }: FieldSchemaDesig
       fieldName: "",
       dataType: "text",
       required: false,
+      displayOrder: fields.length,
+    };
+    onFieldsChange([...fields, newField]);
+    setOpenFields(prev => new Set(prev).add(newField.id));
+  };
+
+  const addFieldFromGlobal = (globalField: FieldSchema) => {
+    // Create a copy of the global field with a new ID to avoid conflicts
+    const newField: FieldSchema = {
+      ...globalField,
+      id: `field_${Date.now()}`,
       displayOrder: fields.length,
     };
     onFieldsChange([...fields, newField]);
@@ -570,10 +584,49 @@ export function FieldSchemaDesigner({ fields, onFieldsChange }: FieldSchemaDesig
         </div>
       )}
       
-      <div className="flex justify-end pt-2">
+      <div className="flex justify-end gap-2 pt-2">
+        {availableGlobalFields.length > 0 && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button type="button" variant="outline" size="sm" className="w-full sm:w-auto">
+                <Copy className="h-4 w-4 mr-2" />
+                Add from Global Fields
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[300px] p-0" align="end">
+              <Command>
+                <CommandInput placeholder="Search global fields..." />
+                <CommandList>
+                  <CommandEmpty>No global fields found.</CommandEmpty>
+                  <CommandGroup heading="Available Global Fields">
+                    {availableGlobalFields
+                      .filter(globalField => !fields.some(f => f.fieldName === globalField.fieldName))
+                      .map((globalField) => (
+                        <CommandItem
+                          key={globalField.id}
+                          onSelect={() => addFieldFromGlobal(globalField)}
+                          className="cursor-pointer"
+                        >
+                          <div className="flex flex-col">
+                            <span className="font-medium">{globalField.label || globalField.fieldName}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {globalField.dataType} {globalField.required && "• Required"}
+                            </span>
+                          </div>
+                        </CommandItem>
+                      ))}
+                    {availableGlobalFields.filter(globalField => !fields.some(f => f.fieldName === globalField.fieldName)).length === 0 && (
+                      <CommandItem disabled>All global fields are already added</CommandItem>
+                    )}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+        )}
         <Button type="button" onClick={addField} size="sm" className="w-full sm:w-auto">
           <Plus className="h-4 w-4 mr-2" />
-          Add Field
+          Add New Field
         </Button>
       </div>
     </div>

@@ -13,6 +13,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { RoutingPreview } from "./RoutingPreview";
 import { IntentEditor, IntentDefinition } from "./IntentEditor";
 import { FieldSchemaDesigner, FieldSchema } from "./FieldSchemaDesigner";
+import { FieldSchemaMapper } from "./FieldSchemaMapper";
 import { ConversationPreview } from "./ConversationPreview";
 import { ConditionalRoutingEditor } from "./ConditionalRoutingEditor";
 import { RouteFallbackEditor } from "./RouteFallbackEditor";
@@ -56,6 +57,7 @@ export function AgentConfigDialog({ open, onOpenChange, agent, onSave, isSaving 
   // State for collapsible sections
   const [isGreetingOpen, setIsGreetingOpen] = useState(true);
   const [isIntentEditorOpen, setIsIntentEditorOpen] = useState(false);
+  const [isFieldSchemaOpen, setIsFieldSchemaOpen] = useState(false);
   const [isRoutingOpen, setIsRoutingOpen] = useState(true);
   const [isEmailTemplateOpen, setIsEmailTemplateOpen] = useState(true);
   const [isFallbackOpen, setIsFallbackOpen] = useState(true);
@@ -190,7 +192,7 @@ Call Summary:
         };
         associatedIntents?: string[];
         displayOrder?: number;
-        fieldSchemas?: FieldSchema[]; // Field schemas specific to this routing logic block
+        fieldSchemaIds?: string[]; // Field schema IDs - references to global fieldSchemas (for mapping, not editing)
         routingLogics?: Array<any>; // Recursive for deeper nesting
       }>,
     },
@@ -502,7 +504,7 @@ Call Summary:
           informationGathering: [],
           completionResponse: "",
           displayOrder: formData.baseLogic.routingLogics.length,
-          fieldSchemas: [],
+          fieldSchemaIds: [],
         }],
       },
     });
@@ -642,7 +644,7 @@ Call Summary:
         informationGathering: [],
         completionResponse: "",
         displayOrder: (routing.routingLogics?.length || 0),
-        fieldSchemas: [],
+        fieldSchemaIds: [],
         routingLogics: [],
       } as typeof formData.baseLogic.routingLogics[0];
 
@@ -1054,20 +1056,20 @@ Call Summary:
             {depth === 0 && (
               <div className="pt-2 border-t space-y-2">
                 <div className="flex items-center justify-between">
-                  <h5 className={cn(textSize, "font-medium")}>Field Schema</h5>
+                  <h5 className={cn(textSize, "font-medium")}>Field Schema Mapping</h5>
                   <p className={cn(textSize, "text-muted-foreground text-xs")}>
-                    Define data fields specific to this routing block
+                    Select which global fields to use in this routing block
                   </p>
                 </div>
                 <div className={cn("border-l-2 border-primary/10 pl-3")}>
-                  <FieldSchemaDesigner
-                    fields={routing.fieldSchemas || []}
-                    onFieldsChange={(fields) => {
+                  <FieldSchemaMapper
+                    selectedFieldIds={routing.fieldSchemaIds || []}
+                    onSelectedFieldsChange={(fieldIds) => {
                       if (parentId) {
                         const findAndUpdate = (routings: typeof formData.baseLogic.routingLogics): typeof formData.baseLogic.routingLogics => {
                           return routings.map((r) => {
                             if (r.id === routing.id) {
-                              return { ...r, fieldSchemas: fields };
+                              return { ...r, fieldSchemaIds: fieldIds };
                             }
                             if (r.routingLogics && r.routingLogics.length > 0) {
                               return { ...r, routingLogics: findAndUpdate(r.routingLogics as typeof formData.baseLogic.routingLogics) };
@@ -1083,9 +1085,10 @@ Call Summary:
                           },
                         });
                       } else {
-                        updateRoutingLogic(routing.id, { fieldSchemas: fields });
+                        updateRoutingLogic(routing.id, { fieldSchemaIds: fieldIds });
                       }
                     }}
+                    availableGlobalFields={formData.fieldSchemas || []}
                   />
                 </div>
               </div>
@@ -1517,6 +1520,34 @@ Call Summary:
                       availableRoutingActions={[]}
                       customRoutingActions={formData.customRoutingActions || []}
                       onCustomRoutingActionsChange={(actions) => setFormData({ ...formData, customRoutingActions: actions })}
+                    />
+                  </CollapsibleContent>
+                </div>
+              </Collapsible>
+
+              {/* 1.6. Field Schema Designer */}
+              <Collapsible open={isFieldSchemaOpen} onOpenChange={setIsFieldSchemaOpen}>
+                <div className="p-4 bg-muted/30 rounded-lg border">
+                  <CollapsibleTrigger className="w-full">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">1.6</div>
+                        <div>
+                          <h3 className="font-semibold text-sm">Field Schema</h3>
+                          <p className="text-xs text-muted-foreground">Define data fields that the agent will collect during conversations. These can be reused in routing logic blocks.</p>
+                        </div>
+                      </div>
+                      {isFieldSchemaOpen ? (
+                        <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </div>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="pt-4">
+                    <FieldSchemaDesigner
+                      fields={formData.fieldSchemas || []}
+                      onFieldsChange={(fields) => setFormData({ ...formData, fieldSchemas: fields })}
                     />
                   </CollapsibleContent>
                 </div>
