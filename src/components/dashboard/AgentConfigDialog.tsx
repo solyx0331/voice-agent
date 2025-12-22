@@ -18,6 +18,7 @@ import { ConditionalRoutingEditor } from "./ConditionalRoutingEditor";
 import { RouteFallbackEditor } from "./RouteFallbackEditor";
 import { EndConditionEditor } from "./EndConditionEditor";
 import { GlobalRouteHandlers } from "./GlobalRouteHandlers";
+import { RoutingActionSelector } from "./RoutingActionSelector";
 import { toast } from "sonner";
 import { apiService } from "@/lib/api/api";
 import { VoiceAgent } from "@/lib/api/types";
@@ -802,15 +803,22 @@ Call Summary:
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className={cn(textSize, "text-muted-foreground mb-1 block")}>Action</Label>
-                <Input
+                <Label className={cn(textSize, "text-muted-foreground mb-1 block")}>
+                  Routing Action
+                  {depth === 0 && (
+                    <span className="text-xs text-muted-foreground ml-2 font-normal">
+                      (Links to intents with same action)
+                    </span>
+                  )}
+                </Label>
+                <RoutingActionSelector
                   value={routing.action}
-                  onChange={(e) => {
+                  onValueChange={(value) => {
                     if (parentId) {
                       const findAndUpdate = (routings: typeof formData.baseLogic.routingLogics): typeof formData.baseLogic.routingLogics => {
                         return routings.map((r) => {
                           if (r.id === routing.id) {
-                            return { ...r, action: e.target.value };
+                            return { ...r, action: value };
                           }
                           if (r.routingLogics && r.routingLogics.length > 0) {
                             return { ...r, routingLogics: findAndUpdate(r.routingLogics as typeof formData.baseLogic.routingLogics) };
@@ -826,12 +834,40 @@ Call Summary:
                         },
                       });
                     } else {
-                      updateRoutingLogic(routing.id, { action: e.target.value });
+                      updateRoutingLogic(routing.id, { action: value });
                     }
                   }}
-                  placeholder='e.g., Route to Evolved Sound logic tree'
-                  className={cn(textSize, depth > 2 && "h-8 text-xs")}
+                  availableActions={[
+                    ...(formData.intentDefinitions?.map(i => i.routingAction).filter(Boolean) || []),
+                    ...(formData.customRoutingActions || []),
+                    "callback", "quote", "continue-flow", "opt-out", "transfer", "voicemail", "end-call", "escalate"
+                  ].filter((v, i, a) => a.indexOf(v) === i)} // Remove duplicates
+                  customActions={formData.customRoutingActions || []}
+                  onAddCustomAction={(action) => {
+                    setFormData({
+                      ...formData,
+                      customRoutingActions: [...(formData.customRoutingActions || []), action],
+                    });
+                  }}
+                  showTooltips={depth === 0 ? true : false}
                 />
+                {depth === 0 && routing.action && (
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {(() => {
+                      const matchingIntents = formData.intentDefinitions?.filter(
+                        intent => intent.routingAction === routing.action && intent.enabled
+                      ) || [];
+                      if (matchingIntents.length > 0) {
+                        return (
+                          <span>
+                            Connected to {matchingIntents.length} intent{matchingIntents.length > 1 ? 's' : ''}: {matchingIntents.map(i => i.name).join(', ')}
+                          </span>
+                        );
+                      }
+                      return <span className="text-orange-500">No intents connected. Create an intent with this routing action to connect them.</span>;
+                    })()}
+                  </div>
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label className={cn(textSize, "text-muted-foreground mb-1 block")}>Response</Label>
@@ -1760,7 +1796,9 @@ Call Summary:
                         <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">2.2</div>
                         <div>
                           <h3 className="font-semibold text-sm">Routing Logic</h3>
-                          <p className="text-xs text-muted-foreground">Define routing blocks with condition, action, response, and data collection</p>
+                          <p className="text-xs text-muted-foreground">
+                            Define routing blocks that execute when intents with matching routing actions are detected
+                          </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">

@@ -219,14 +219,23 @@ export function IntentEditor({
                         />
                       </div>
                       <div>
-                        <Label htmlFor={`intent-routing-${intent.id}`}>Routing Action *</Label>
+                        <Label htmlFor={`intent-routing-${intent.id}`}>
+                          Routing Action *
+                          <span className="text-xs text-muted-foreground ml-2 font-normal">
+                            (Hover over actions for descriptions)
+                          </span>
+                        </Label>
                         <RoutingActionSelector
                           value={intent.routingAction}
                           onValueChange={(value) => updateIntent(intent.id, { routingAction: value })}
                           availableActions={allRoutingActions}
                           customActions={customRoutingActions}
                           onAddCustomAction={handleAddCustomAction}
+                          showTooltips={true}
                         />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          This action will be triggered when this intent is detected during the conversation.
+                        </p>
                       </div>
                     </div>
 

@@ -4,9 +4,22 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Check, ChevronsUpDown, Plus, X } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Check, ChevronsUpDown, Plus, X, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+
+// Routing action descriptions (matches backend config)
+const ROUTING_ACTION_DESCRIPTIONS: Record<string, string> = {
+  "callback": "Collect contact information and terminate the call. Agent will ask for name and phone number, then end the call.",
+  "quote": "Collect quotation details and continue with pricing flow. Agent will gather product/service details and budget information.",
+  "continue-flow": "Continue to the next question in the conversation flow. This is the default action when no specific intent matches.",
+  "opt-out": "Handle opt-out request (e.g., stop recording, unsubscribe). Agent will acknowledge and stop the requested action.",
+  "transfer": "Transfer the call to a human representative. Agent will collect basic info and connect to a live agent.",
+  "voicemail": "Route to voicemail. Agent will prompt caller to leave a message.",
+  "end-call": "End the call immediately. Agent will provide a closing message and terminate.",
+  "escalate": "Escalate to higher priority handling. Agent will collect urgent details and flag for immediate follow-up.",
+};
 
 interface RoutingActionSelectorProps {
   value: string;
@@ -14,6 +27,7 @@ interface RoutingActionSelectorProps {
   availableActions: string[]; // Combined default + custom actions
   customActions: string[]; // Only custom actions
   onAddCustomAction: (action: string) => void; // Callback to add new custom action
+  showTooltips?: boolean; // Whether to show tooltips with descriptions
 }
 
 export function RoutingActionSelector({
@@ -22,6 +36,7 @@ export function RoutingActionSelector({
   availableActions,
   customActions,
   onAddCustomAction,
+  showTooltips = true,
 }: RoutingActionSelectorProps) {
   const [open, setOpen] = useState(false);
   const [inputValue, setInputValue] = useState("");
@@ -159,21 +174,39 @@ export function RoutingActionSelector({
                 <CommandGroup heading="Standard Actions">
                   {filteredActions
                     .filter((action) => !customActions.includes(action))
-                    .map((action) => (
-                      <CommandItem
-                        key={action}
-                        value={action}
-                        onSelect={() => handleSelect(action)}
-                      >
-                        <Check
-                          className={cn(
-                            "mr-2 h-4 w-4",
-                            value === action ? "opacity-100" : "opacity-0"
+                    .map((action) => {
+                      const description = ROUTING_ACTION_DESCRIPTIONS[action.toLowerCase()];
+                      return (
+                        <CommandItem
+                          key={action}
+                          value={action}
+                          onSelect={() => handleSelect(action)}
+                          className="flex items-center justify-between"
+                        >
+                          <div className="flex items-center flex-1">
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                value === action ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            <span>{action}</span>
+                          </div>
+                          {showTooltips && description && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Info className="h-3 w-3 ml-2 text-muted-foreground cursor-help" />
+                                </TooltipTrigger>
+                                <TooltipContent side="right" className="max-w-xs">
+                                  <p className="text-xs">{description}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                           )}
-                        />
-                        {action}
-                      </CommandItem>
-                    ))}
+                        </CommandItem>
+                      );
+                    })}
                 </CommandGroup>
                 {customActions.length > 0 && (
                   <CommandGroup heading="Custom Actions">
