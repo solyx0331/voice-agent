@@ -581,6 +581,672 @@ Call Summary:
     });
   };
 
+  // Recursive function to render routing logic at any depth
+  const renderRoutingLogicRecursive = (
+    routing: typeof formData.baseLogic.routingLogics[0],
+    path: number[] = [],
+    parentId?: string,
+    depth: number = 0
+  ) => {
+    const tagNumber = path.length > 0 ? path.join('.') : String(path[0] + 1);
+    const isOpen = depth === 0 
+      ? openRoutingBlocks.has(routing.id)
+      : openNestedRoutingBlocks.has(routing.id);
+    
+    const toggleOpen = () => {
+      if (depth === 0) {
+        toggleRoutingBlock(routing.id);
+      } else {
+        toggleNestedRoutingBlock(routing.id);
+      }
+    };
+
+    const updateNestedRouting = (updates: any) => {
+      if (parentId) {
+        updateRoutingLogic(parentId, { routingLogics: updates });
+      } else {
+        updateRoutingLogic(routing.id, updates);
+      }
+    };
+
+    const addNested = () => {
+      const newId = `routing-${Date.now()}-${Math.random()}`;
+      const newRouting = {
+        id: newId,
+        name: `Sub-Routing Logic ${((routing.routingLogics?.length || 0) + 1)}`,
+        condition: "",
+        action: "",
+        response: "",
+        informationGathering: [],
+        leadCaptureFields: [],
+        completionResponse: "",
+        routingLogics: [],
+      } as typeof formData.baseLogic.routingLogics[0];
+
+      // Always add to the current routing's routingLogics, not the parent's
+      // We need to find the current routing in the tree and update it
+      const findAndAddToCurrent = (routings: typeof formData.baseLogic.routingLogics): typeof formData.baseLogic.routingLogics => {
+        return routings.map((r) => {
+          if (r.id === routing.id) {
+            // Found the current routing, add to its routingLogics
+            return {
+              ...r,
+              routingLogics: [...(r.routingLogics || []), newRouting],
+            };
+          }
+          if (r.routingLogics && r.routingLogics.length > 0) {
+            // Recursively search in nested routingLogics
+            return { ...r, routingLogics: findAndAddToCurrent(r.routingLogics as typeof formData.baseLogic.routingLogics) };
+          }
+          return r;
+        });
+      };
+
+      setFormData({
+        ...formData,
+        baseLogic: {
+          ...formData.baseLogic,
+          routingLogics: findAndAddToCurrent(formData.baseLogic.routingLogics),
+        },
+      });
+    };
+
+    const removeNested = (idToRemove: string) => {
+      if (parentId) {
+        removeNestedRoutingLogic(idToRemove, parentId);
+      } else {
+        removeNestedRoutingLogic(idToRemove, routing.id);
+      }
+    };
+
+    // Progressive styling based on depth - more compact at deeper levels
+    const bgColor = depth === 0 ? 'bg-muted/30' : depth === 1 ? 'bg-muted/20' : 'bg-muted/10';
+    const padding = depth === 0 ? 'p-4' : depth === 1 ? 'p-3' : depth === 2 ? 'p-2.5' : 'p-2';
+    // Reduced indentation - cap at ml-8 to prevent overflow
+    const marginLeft = depth > 0 ? (depth === 1 ? 'ml-3' : depth === 2 ? 'ml-6' : 'ml-8') : '';
+    const textSize = depth === 0 ? 'text-sm' : depth === 1 ? 'text-xs' : 'text-xs';
+    const badgeSize = depth === 0 ? 'text-sm min-w-[2.5rem]' : depth === 1 ? 'text-xs min-w-[2rem]' : 'text-xs min-w-[1.75rem]';
+    const badgeBg = depth === 0 ? 'bg-primary/20' : depth === 1 ? 'bg-primary/10' : 'bg-primary/5';
+    const spaceY = depth === 0 ? 'space-y-4' : depth === 1 ? 'space-y-3' : 'space-y-2';
+    const pt = depth === 0 ? 'pt-4' : depth === 1 ? 'pt-3' : 'pt-2';
+    const pb = depth === 0 ? 'pb-3' : depth === 1 ? 'pb-2' : 'pb-1.5';
+    const iconSize = depth === 0 ? 'h-4 w-4' : depth === 1 ? 'h-3 w-3' : 'h-2.5 w-2.5';
+    const iconSizeSmall = depth === 0 ? 'h-3 w-3' : depth === 1 ? 'h-2.5 w-2.5' : 'h-2 w-2';
+    const fieldPadding = depth === 0 ? 'p-3' : depth === 1 ? 'p-2' : 'p-1.5';
+    const fieldBg = depth === 0 ? 'bg-secondary' : depth === 1 ? 'bg-secondary/50' : 'bg-secondary/30';
+    const nestedSpacing = depth === 0 ? 'space-y-3' : depth === 1 ? 'space-y-2' : 'space-y-1.5';
+    // Reduced nested margin - cap at ml-6 to prevent overflow
+    const nestedMargin = depth === 1 ? 'ml-3 pl-3' : depth === 2 ? 'ml-6 pl-2' : 'ml-6 pl-2';
+    const nestedBorder = depth > 0 ? (depth === 1 ? 'border-l-2 border-primary/20' : 'border-l-2 border-primary/10') : '';
+
+    return (
+      <Collapsible key={routing.id} open={isOpen} onOpenChange={toggleOpen}>
+        <div className={cn(padding, bgColor, "rounded-lg border", marginLeft, depth > 0 && "space-y-3", "min-w-0", "flex-shrink-0")}>
+          <CollapsibleTrigger className="w-full">
+            <div className={cn("flex items-center justify-between border-b", pb, depth > 2 && "gap-1")}>
+              <div className={cn("flex items-center gap-2", depth > 2 && "gap-1.5", "min-w-0 flex-1")}>
+                <Badge variant="outline" className={cn(badgeBg, "text-primary border-primary/30 font-bold", badgeSize, "justify-center flex-shrink-0")}>
+                  {tagNumber}
+                </Badge>
+                <Input
+                  value={routing.name}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    if (parentId) {
+                      const findAndUpdate = (routings: typeof formData.baseLogic.routingLogics): typeof formData.baseLogic.routingLogics => {
+                        return routings.map((r) => {
+                          if (r.id === routing.id) {
+                            return { ...r, name: e.target.value };
+                          }
+                          if (r.routingLogics && r.routingLogics.length > 0) {
+                            return { ...r, routingLogics: findAndUpdate(r.routingLogics as typeof formData.baseLogic.routingLogics) };
+                          }
+                          return r;
+                        });
+                      };
+                      setFormData({
+                        ...formData,
+                        baseLogic: {
+                          ...formData.baseLogic,
+                          routingLogics: findAndUpdate(formData.baseLogic.routingLogics),
+                        },
+                      });
+                    } else {
+                      updateRoutingLogic(routing.id, { name: e.target.value });
+                    }
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  placeholder={depth === 0 ? "Routing Logic Name (e.g., Evolved Sound Route)" : "Nested Routing Logic Name"}
+                  className={cn("font-semibold border-0 bg-transparent p-0 h-auto", textSize, "min-w-0 flex-1")}
+                />
+              </div>
+              <div className={cn("flex items-center gap-2", depth > 2 && "gap-1", "flex-shrink-0")}>
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (depth === 0) {
+                      removeRoutingLogic(routing.id);
+                    } else {
+                      removeNested(routing.id);
+                    }
+                  }}
+                >
+                  <Trash2 className={iconSize} />
+                </Button>
+                {isOpen ? (
+                  <ChevronUp className={cn(iconSize, "text-muted-foreground")} />
+                ) : (
+                  <ChevronDown className={cn(iconSize, "text-muted-foreground")} />
+                )}
+              </div>
+            </div>
+          </CollapsibleTrigger>
+          <CollapsibleContent className={cn(spaceY, pt)}>
+            {/* Routing Rules */}
+            <div className={cn("space-y-2", depth > 2 && "space-y-1.5")}>
+              <h4 className={cn(textSize, "font-medium")}>Routing Rules</h4>
+              <div className="space-y-1.5">
+                <Label className={cn(textSize, "text-muted-foreground mb-1 block")}>Condition</Label>
+                <Input
+                  value={routing.condition}
+                  onChange={(e) => {
+                    if (parentId) {
+                      const findAndUpdate = (routings: typeof formData.baseLogic.routingLogics): typeof formData.baseLogic.routingLogics => {
+                        return routings.map((r) => {
+                          if (r.id === routing.id) {
+                            return { ...r, condition: e.target.value };
+                          }
+                          if (r.routingLogics && r.routingLogics.length > 0) {
+                            return { ...r, routingLogics: findAndUpdate(r.routingLogics as typeof formData.baseLogic.routingLogics) };
+                          }
+                          return r;
+                        });
+                      };
+                      setFormData({
+                        ...formData,
+                        baseLogic: {
+                          ...formData.baseLogic,
+                          routingLogics: findAndUpdate(formData.baseLogic.routingLogics),
+                        },
+                      });
+                    } else {
+                      updateRoutingLogic(routing.id, { condition: e.target.value });
+                    }
+                  }}
+                  placeholder='e.g., caller says "Evolved Sound"'
+                  className={cn(textSize, depth > 2 && "h-8 text-xs")}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className={cn(textSize, "text-muted-foreground mb-1 block")}>Action</Label>
+                <Input
+                  value={routing.action}
+                  onChange={(e) => {
+                    if (parentId) {
+                      const findAndUpdate = (routings: typeof formData.baseLogic.routingLogics): typeof formData.baseLogic.routingLogics => {
+                        return routings.map((r) => {
+                          if (r.id === routing.id) {
+                            return { ...r, action: e.target.value };
+                          }
+                          if (r.routingLogics && r.routingLogics.length > 0) {
+                            return { ...r, routingLogics: findAndUpdate(r.routingLogics as typeof formData.baseLogic.routingLogics) };
+                          }
+                          return r;
+                        });
+                      };
+                      setFormData({
+                        ...formData,
+                        baseLogic: {
+                          ...formData.baseLogic,
+                          routingLogics: findAndUpdate(formData.baseLogic.routingLogics),
+                        },
+                      });
+                    } else {
+                      updateRoutingLogic(routing.id, { action: e.target.value });
+                    }
+                  }}
+                  placeholder='e.g., Route to Evolved Sound logic tree'
+                  className={cn(textSize, depth > 2 && "h-8 text-xs")}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className={cn(textSize, "text-muted-foreground mb-1 block")}>Response</Label>
+                <Textarea
+                  value={routing.response}
+                  onChange={(e) => {
+                    if (parentId) {
+                      const findAndUpdate = (routings: typeof formData.baseLogic.routingLogics): typeof formData.baseLogic.routingLogics => {
+                        return routings.map((r) => {
+                          if (r.id === routing.id) {
+                            return { ...r, response: e.target.value };
+                          }
+                          if (r.routingLogics && r.routingLogics.length > 0) {
+                            return { ...r, routingLogics: findAndUpdate(r.routingLogics as typeof formData.baseLogic.routingLogics) };
+                          }
+                          return r;
+                        });
+                      };
+                      setFormData({
+                        ...formData,
+                        baseLogic: {
+                          ...formData.baseLogic,
+                          routingLogics: findAndUpdate(formData.baseLogic.routingLogics),
+                        },
+                      });
+                    } else {
+                      updateRoutingLogic(routing.id, { response: e.target.value });
+                    }
+                  }}
+                  placeholder='e.g., Thank you for choosing Evolved Sound. What type of service are you enquiring about?'
+                  rows={depth > 2 ? 1 : 2}
+                  className={cn(textSize, depth > 2 && "min-h-[2rem]")}
+                />
+              </div>
+            </div>
+
+            {/* Information Gathering */}
+            <div className="pt-2 border-t space-y-2">
+              <div className="flex items-center justify-between">
+                <h5 className={cn(textSize, "font-medium")}>Information Gathering</h5>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const currentInfo = routing.informationGathering || [];
+                    const updated = [...currentInfo, { question: "" }];
+                    if (parentId) {
+                      const findAndUpdate = (routings: typeof formData.baseLogic.routingLogics): typeof formData.baseLogic.routingLogics => {
+                        return routings.map((r) => {
+                          if (r.id === routing.id) {
+                            return { ...r, informationGathering: updated };
+                          }
+                          if (r.routingLogics && r.routingLogics.length > 0) {
+                            return { ...r, routingLogics: findAndUpdate(r.routingLogics as typeof formData.baseLogic.routingLogics) };
+                          }
+                          return r;
+                        });
+                      };
+                      setFormData({
+                        ...formData,
+                        baseLogic: {
+                          ...formData.baseLogic,
+                          routingLogics: findAndUpdate(formData.baseLogic.routingLogics),
+                        },
+                      });
+                    } else {
+                      updateRoutingLogic(routing.id, { informationGathering: updated });
+                    }
+                  }}
+                >
+                  <Plus className={cn(iconSizeSmall, "mr-1")} />
+                  Add
+                </Button>
+              </div>
+              {(routing.informationGathering || []).map((item, infoIndex) => (
+                <div key={infoIndex} className="flex gap-2">
+                  <Input
+                    value={item.question}
+                    onChange={(e) => {
+                      const currentInfo = routing.informationGathering || [];
+                      const updated = [...currentInfo];
+                      updated[infoIndex] = { question: e.target.value };
+                      if (parentId) {
+                        const findAndUpdate = (routings: typeof formData.baseLogic.routingLogics): typeof formData.baseLogic.routingLogics => {
+                          return routings.map((r) => {
+                            if (r.id === routing.id) {
+                              return { ...r, informationGathering: updated };
+                            }
+                            if (r.routingLogics && r.routingLogics.length > 0) {
+                              return { ...r, routingLogics: findAndUpdate(r.routingLogics as typeof formData.baseLogic.routingLogics) };
+                            }
+                            return r;
+                          });
+                        };
+                        setFormData({
+                          ...formData,
+                          baseLogic: {
+                            ...formData.baseLogic,
+                            routingLogics: findAndUpdate(formData.baseLogic.routingLogics),
+                          },
+                        });
+                      } else {
+                        updateRoutingLogic(routing.id, { informationGathering: updated });
+                      }
+                    }}
+                    placeholder="Information question"
+                    className={cn("flex-1", textSize)}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      const currentInfo = routing.informationGathering || [];
+                      const updated = currentInfo.filter((_, i) => i !== infoIndex);
+                      if (parentId) {
+                        const findAndUpdate = (routings: typeof formData.baseLogic.routingLogics): typeof formData.baseLogic.routingLogics => {
+                          return routings.map((r) => {
+                            if (r.id === routing.id) {
+                              return { ...r, informationGathering: updated };
+                            }
+                            if (r.routingLogics && r.routingLogics.length > 0) {
+                              return { ...r, routingLogics: findAndUpdate(r.routingLogics as typeof formData.baseLogic.routingLogics) };
+                            }
+                            return r;
+                          });
+                        };
+                        setFormData({
+                          ...formData,
+                          baseLogic: {
+                            ...formData.baseLogic,
+                            routingLogics: findAndUpdate(formData.baseLogic.routingLogics),
+                          },
+                        });
+                      } else {
+                        updateRoutingLogic(routing.id, { informationGathering: updated });
+                      }
+                    }}
+                  >
+                    <X className={iconSizeSmall} />
+                  </Button>
+                </div>
+              ))}
+            </div>
+
+            {/* Lead Capture Fields */}
+            <div className="pt-2 border-t space-y-2">
+              <div className="flex items-center justify-between">
+                <h5 className={cn(textSize, "font-medium")}>Lead Capture Fields</h5>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const currentFields = routing.leadCaptureFields || [];
+                    const updated = [...currentFields, { name: "", question: "", required: false, type: "text" as const }];
+                    if (parentId) {
+                      const findAndUpdate = (routings: typeof formData.baseLogic.routingLogics): typeof formData.baseLogic.routingLogics => {
+                        return routings.map((r) => {
+                          if (r.id === routing.id) {
+                            return { ...r, leadCaptureFields: updated };
+                          }
+                          if (r.routingLogics && r.routingLogics.length > 0) {
+                            return { ...r, routingLogics: findAndUpdate(r.routingLogics as typeof formData.baseLogic.routingLogics) };
+                          }
+                          return r;
+                        });
+                      };
+                      setFormData({
+                        ...formData,
+                        baseLogic: {
+                          ...formData.baseLogic,
+                          routingLogics: findAndUpdate(formData.baseLogic.routingLogics),
+                        },
+                      });
+                    } else {
+                      updateRoutingLogic(routing.id, { leadCaptureFields: updated });
+                    }
+                  }}
+                >
+                  <Plus className={cn(iconSizeSmall, "mr-1")} />
+                  Add
+                </Button>
+              </div>
+              {(routing.leadCaptureFields || []).map((field, fieldIndex) => (
+                <div key={fieldIndex} className={cn(fieldPadding, fieldBg, "rounded space-y-1")}>
+                  <div className="flex justify-between items-center">
+                    <span className={cn(textSize, "font-medium")}>Field #{fieldIndex + 1}</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        const currentFields = routing.leadCaptureFields || [];
+                        const updated = currentFields.filter((_, i) => i !== fieldIndex);
+                        if (parentId) {
+                          const findAndUpdate = (routings: typeof formData.baseLogic.routingLogics): typeof formData.baseLogic.routingLogics => {
+                            return routings.map((r) => {
+                              if (r.id === routing.id) {
+                                return { ...r, leadCaptureFields: updated };
+                              }
+                              if (r.routingLogics && r.routingLogics.length > 0) {
+                                return { ...r, routingLogics: findAndUpdate(r.routingLogics as typeof formData.baseLogic.routingLogics) };
+                              }
+                              return r;
+                            });
+                          };
+                          setFormData({
+                            ...formData,
+                            baseLogic: {
+                              ...formData.baseLogic,
+                              routingLogics: findAndUpdate(formData.baseLogic.routingLogics),
+                            },
+                          });
+                        } else {
+                          updateRoutingLogic(routing.id, { leadCaptureFields: updated });
+                        }
+                      }}
+                    >
+                      <X className={iconSizeSmall} />
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1">
+                    <Input
+                      value={field.name}
+                      onChange={(e) => {
+                        const currentFields = routing.leadCaptureFields || [];
+                        const updated = [...currentFields];
+                        updated[fieldIndex] = { ...updated[fieldIndex], name: e.target.value };
+                        if (parentId) {
+                          const findAndUpdate = (routings: typeof formData.baseLogic.routingLogics): typeof formData.baseLogic.routingLogics => {
+                            return routings.map((r) => {
+                              if (r.id === routing.id) {
+                                return { ...r, leadCaptureFields: updated };
+                              }
+                              if (r.routingLogics && r.routingLogics.length > 0) {
+                                return { ...r, routingLogics: findAndUpdate(r.routingLogics as typeof formData.baseLogic.routingLogics) };
+                              }
+                              return r;
+                            });
+                          };
+                          setFormData({
+                            ...formData,
+                            baseLogic: {
+                              ...formData.baseLogic,
+                              routingLogics: findAndUpdate(formData.baseLogic.routingLogics),
+                            },
+                          });
+                        } else {
+                          updateRoutingLogic(routing.id, { leadCaptureFields: updated });
+                        }
+                      }}
+                      placeholder="Field name"
+                      className={textSize}
+                    />
+                    <Select
+                      value={field.type}
+                      onValueChange={(value: "text" | "email" | "phone" | "number") => {
+                        const currentFields = routing.leadCaptureFields || [];
+                        const updated = [...currentFields];
+                        updated[fieldIndex] = { ...updated[fieldIndex], type: value };
+                        if (parentId) {
+                          const findAndUpdate = (routings: typeof formData.baseLogic.routingLogics): typeof formData.baseLogic.routingLogics => {
+                            return routings.map((r) => {
+                              if (r.id === routing.id) {
+                                return { ...r, leadCaptureFields: updated };
+                              }
+                              if (r.routingLogics && r.routingLogics.length > 0) {
+                                return { ...r, routingLogics: findAndUpdate(r.routingLogics as typeof formData.baseLogic.routingLogics) };
+                              }
+                              return r;
+                            });
+                          };
+                          setFormData({
+                            ...formData,
+                            baseLogic: {
+                              ...formData.baseLogic,
+                              routingLogics: findAndUpdate(formData.baseLogic.routingLogics),
+                            },
+                          });
+                        } else {
+                          updateRoutingLogic(routing.id, { leadCaptureFields: updated });
+                        }
+                      }}
+                    >
+                      <SelectTrigger className={cn(textSize, "h-7")}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="text">Text</SelectItem>
+                        <SelectItem value="email">Email</SelectItem>
+                        <SelectItem value="phone">Phone</SelectItem>
+                        <SelectItem value="number">Number</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Input
+                    value={field.question}
+                    onChange={(e) => {
+                      const currentFields = routing.leadCaptureFields || [];
+                      const updated = [...currentFields];
+                      updated[fieldIndex] = { ...updated[fieldIndex], question: e.target.value };
+                      if (parentId) {
+                        const findAndUpdate = (routings: typeof formData.baseLogic.routingLogics): typeof formData.baseLogic.routingLogics => {
+                          return routings.map((r) => {
+                            if (r.id === routing.id) {
+                              return { ...r, leadCaptureFields: updated };
+                            }
+                            if (r.routingLogics && r.routingLogics.length > 0) {
+                              return { ...r, routingLogics: findAndUpdate(r.routingLogics as typeof formData.baseLogic.routingLogics) };
+                            }
+                            return r;
+                          });
+                        };
+                        setFormData({
+                          ...formData,
+                          baseLogic: {
+                            ...formData.baseLogic,
+                            routingLogics: findAndUpdate(formData.baseLogic.routingLogics),
+                          },
+                        });
+                      } else {
+                        updateRoutingLogic(routing.id, { leadCaptureFields: updated });
+                      }
+                    }}
+                    placeholder="Question to ask"
+                    className={textSize}
+                  />
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={field.required}
+                      onChange={(e) => {
+                        const currentFields = routing.leadCaptureFields || [];
+                        const updated = [...currentFields];
+                        updated[fieldIndex] = { ...updated[fieldIndex], required: e.target.checked };
+                        if (parentId) {
+                          const findAndUpdate = (routings: typeof formData.baseLogic.routingLogics): typeof formData.baseLogic.routingLogics => {
+                            return routings.map((r) => {
+                              if (r.id === routing.id) {
+                                return { ...r, leadCaptureFields: updated };
+                              }
+                              if (r.routingLogics && r.routingLogics.length > 0) {
+                                return { ...r, routingLogics: findAndUpdate(r.routingLogics as typeof formData.baseLogic.routingLogics) };
+                              }
+                              return r;
+                            });
+                          };
+                          setFormData({
+                            ...formData,
+                            baseLogic: {
+                              ...formData.baseLogic,
+                              routingLogics: findAndUpdate(formData.baseLogic.routingLogics),
+                            },
+                          });
+                        } else {
+                          updateRoutingLogic(routing.id, { leadCaptureFields: updated });
+                        }
+                      }}
+                      className="rounded"
+                    />
+                    <Label className={cn(textSize, "cursor-pointer")}>Required</Label>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Completion Response */}
+            <div className="pt-2 border-t space-y-2">
+              <h5 className={cn(textSize, "font-medium")}>Completion Response</h5>
+              <Textarea
+                value={routing.completionResponse || ""}
+                onChange={(e) => {
+                  if (parentId) {
+                    const findAndUpdate = (routings: typeof formData.baseLogic.routingLogics): typeof formData.baseLogic.routingLogics => {
+                      return routings.map((r) => {
+                        if (r.id === routing.id) {
+                          return { ...r, completionResponse: e.target.value };
+                        }
+                        if (r.routingLogics && r.routingLogics.length > 0) {
+                          return { ...r, routingLogics: findAndUpdate(r.routingLogics as typeof formData.baseLogic.routingLogics) };
+                        }
+                        return r;
+                      });
+                    };
+                    setFormData({
+                      ...formData,
+                      baseLogic: {
+                        ...formData.baseLogic,
+                        routingLogics: findAndUpdate(formData.baseLogic.routingLogics),
+                      },
+                    });
+                  } else {
+                    updateRoutingLogic(routing.id, { completionResponse: e.target.value });
+                  }
+                }}
+                placeholder="Response after collecting information"
+                rows={2}
+                className={textSize}
+              />
+            </div>
+
+            {/* Recursive Nested Routing Logic */}
+            <div className="pt-2 border-t space-y-2">
+              <div className="flex items-center justify-between">
+                <h5 className={cn(textSize, "font-medium")}>Nested Routing Logic</h5>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addNested}
+                >
+                  <Plus className={cn(iconSizeSmall, "mr-1")} />
+                  Add Nested Routing
+                </Button>
+              </div>
+              {routing.routingLogics && routing.routingLogics.length > 0 && (
+                <div className={cn(nestedSpacing, nestedMargin, nestedBorder, "min-w-0", "flex-shrink-0")}>
+                  {routing.routingLogics.map((nestedRouting, nestedIndex) => 
+                    renderRoutingLogicRecursive(
+                      nestedRouting,
+                      [...path, nestedIndex + 1],
+                      routing.id,
+                      depth + 1
+                    )
+                  )}
+                </div>
+              )}
+            </div>
+          </CollapsibleContent>
+        </div>
+      </Collapsible>
+    );
+  };
+
   const addInformationGatheringQuestion = (routingId: string) => {
     updateRoutingLogic(routingId, {
       informationGathering: [
@@ -1026,7 +1692,7 @@ Call Summary:
 
               {/* 2. Routing Logic Blocks (Dynamic) */}
               <Collapsible open={isRoutingOpen} onOpenChange={setIsRoutingOpen}>
-                <div className="space-y-4 p-4 bg-muted/30 rounded-lg border">
+                <div className="space-y-4 p-4 bg-muted/30 rounded-lg border overflow-x-auto">
                   <CollapsibleTrigger className="w-full">
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
@@ -1071,7 +1737,7 @@ Call Summary:
                       </div>
                     </div>
                   </CollapsibleTrigger>
-                  <CollapsibleContent className="space-y-4 pt-4">
+                  <CollapsibleContent className="space-y-4 pt-4 min-w-0">
 
                 {formData.baseLogic.routingLogics.length === 0 && (
                   <div className="p-4 bg-muted/30 rounded-lg border border-dashed">
@@ -1080,491 +1746,65 @@ Call Summary:
                   </div>
                 )}
 
-                {formData.baseLogic.routingLogics.map((routing, routingIndex) => {
-                  const isBlockOpen = openRoutingBlocks.has(routing.id);
-                  return (
-                  <Collapsible key={routing.id} open={isBlockOpen} onOpenChange={() => toggleRoutingBlock(routing.id)}>
-                    <div className="p-4 bg-muted/30 rounded-lg border">
-                      <CollapsibleTrigger className="w-full">
-                        <div className="flex items-center justify-between pb-3 border-b">
-                          <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-xs">
-                              {routingIndex + 1}
-                            </div>
-                            <Input
-                              value={routing.name}
-                              onChange={(e) => {
-                                e.stopPropagation();
-                                updateRoutingLogic(routing.id, { name: e.target.value });
-                              }}
-                              onClick={(e) => e.stopPropagation()}
-                              placeholder="Routing Logic Name (e.g., Evolved Sound Route)"
-                              className="font-semibold border-0 bg-transparent p-0 h-auto"
-                            />
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Button 
-                              type="button" 
-                              variant="ghost" 
-                              size="sm" 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                removeRoutingLogic(routing.id);
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                            {isBlockOpen ? (
-                              <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                            ) : (
-                              <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                            )}
-                          </div>
-                        </div>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent className="space-y-4 pt-4">
-                        {/* Routing Rules: Condition, Action, Response */}
-                    <div className="space-y-3">
-                      <h4 className="text-sm font-medium">Routing Rules</h4>
-                      <div>
-                        <Label className="text-xs text-muted-foreground mb-1 block">Condition (When this happens)</Label>
-                        <Input
-                          value={routing.condition}
-                          onChange={(e) => updateRoutingLogic(routing.id, { condition: e.target.value })}
-                          placeholder='e.g., caller says "Evolved Sound"'
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs text-muted-foreground mb-1 block">Action (What to do)</Label>
-                        <Input
-                          value={routing.action}
-                          onChange={(e) => updateRoutingLogic(routing.id, { action: e.target.value })}
-                          placeholder='e.g., Route to Evolved Sound logic tree'
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs text-muted-foreground mb-1 block">Response (What to say)</Label>
-                        <Textarea
-                          value={routing.response}
-                          onChange={(e) => updateRoutingLogic(routing.id, { response: e.target.value })}
-                          placeholder='e.g., Thank you for choosing Evolved Sound. What type of service are you enquiring about?'
-                          rows={2}
-                        />
-                      </div>
-                    </div>
+                {formData.baseLogic.routingLogics.map((routing, routingIndex) => 
+                  renderRoutingLogicRecursive(routing, [routingIndex + 1], undefined, 0)
+                )}
+                
+                {/* Add Routing Logic Button at Bottom */}
+                <div className="flex justify-end pt-4">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      addRoutingLogic();
+                    }}
+                    className="w-full sm:w-auto"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Routing Logic
+                  </Button>
+                </div>
+                  </CollapsibleContent>
+                </div>
+              </Collapsible>
 
-                    {/* Information Gathering (Inside Routing Logic) */}
-                    <div className="pt-4 border-t space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-medium">Information Gathering</h4>
-                        <Button type="button" variant="outline" size="sm" onClick={() => addInformationGatheringQuestion(routing.id)}>
-                          <Plus className="h-3 w-3 mr-1" />
-                          Add Question
-                        </Button>
+              {/* 3. Summary / Email Template */}
+              <Collapsible open={isEmailTemplateOpen} onOpenChange={setIsEmailTemplateOpen}>
+                <div className="p-4 bg-muted/30 rounded-lg border">
+                  <CollapsibleTrigger className="w-full">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">3</div>
+                        <div>
+                          <h3 className="font-semibold text-sm">Summary / Email Template</h3>
+                          <p className="text-xs text-muted-foreground">Email will be sent to client (caller) after call ends with exact information collected</p>
+                        </div>
                       </div>
-                      {routing.informationGathering.length === 0 && (
-                        <p className="text-xs text-muted-foreground italic">No information gathering questions added yet.</p>
+                      {isEmailTemplateOpen ? (
+                        <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
                       )}
-                      {routing.informationGathering.map((item, index) => (
-                        <div key={index} className="flex gap-2">
-                          <Input
-                            value={item.question}
-                            onChange={(e) => {
-                              const updated = [...routing.informationGathering];
-                              updated[index] = { question: e.target.value };
-                              updateRoutingLogic(routing.id, { informationGathering: updated });
-                            }}
-                            placeholder='e.g., What type of service are you enquiring about?'
-                            className="flex-1 text-xs"
-                          />
-                          <Button type="button" variant="ghost" size="sm" onClick={() => removeInformationGatheringQuestion(routing.id, index)}>
-                            <X className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      ))}
                     </div>
-
-                    {/* Nested Routing Logic */}
-                    {routing.routingLogics && routing.routingLogics.length > 0 && (
-                      <div className="pt-4 border-t space-y-3">
-                        <div className="flex items-center justify-between">
-                          <h4 className="text-sm font-medium">Nested Routing Logic</h4>
-                          <Button type="button" variant="outline" size="sm" onClick={() => addNestedRoutingLogic(routing.id)}>
-                            <Plus className="h-3 w-3 mr-1" />
-                            Add Nested Routing
-                          </Button>
-                        </div>
-                        <div className="ml-4 space-y-3 border-l-2 border-primary/20 pl-4">
-                          {routing.routingLogics.map((nestedRouting, nestedIndex) => {
-                            const isNestedOpen = openNestedRoutingBlocks.has(nestedRouting.id);
-                            return (
-                            <Collapsible key={nestedRouting.id} open={isNestedOpen} onOpenChange={() => toggleNestedRoutingBlock(nestedRouting.id)}>
-                              <div className="p-4 bg-muted/20 rounded-lg border">
-                                <CollapsibleTrigger className="w-full">
-                                  <div className="flex items-center justify-between pb-2 border-b">
-                                    <div className="flex items-center gap-2">
-                                      <div className="w-5 h-5 rounded-full bg-primary/30 text-primary flex items-center justify-center font-bold text-xs">
-                                        {nestedIndex + 1}
-                                      </div>
-                                      <Input
-                                        value={nestedRouting.name}
-                                        onChange={(e) => {
-                                          e.stopPropagation();
-                                          const updated = [...(routing.routingLogics || [])];
-                                          updated[nestedIndex] = { ...updated[nestedIndex], name: e.target.value };
-                                          updateRoutingLogic(routing.id, { routingLogics: updated as any });
-                                        }}
-                                        onClick={(e) => e.stopPropagation()}
-                                        placeholder="Nested Routing Logic Name"
-                                        className="font-semibold border-0 bg-transparent p-0 h-auto text-xs"
-                                      />
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                      <Button 
-                                        type="button" 
-                                        variant="ghost" 
-                                        size="sm" 
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          removeNestedRoutingLogic(nestedRouting.id, routing.id);
-                                        }}
-                                      >
-                                        <Trash2 className="h-3 w-3" />
-                                      </Button>
-                                      {isNestedOpen ? (
-                                        <ChevronUp className="h-3 w-3 text-muted-foreground" />
-                                      ) : (
-                                        <ChevronDown className="h-3 w-3 text-muted-foreground" />
-                                      )}
-                                    </div>
-                                  </div>
-                                </CollapsibleTrigger>
-                                <CollapsibleContent className="space-y-3 pt-3">
-                                  {/* Nested Routing Rules */}
-                              <div className="space-y-2">
-                                <div>
-                                  <Label className="text-xs text-muted-foreground mb-1 block">Condition</Label>
-                                  <Input
-                                    value={nestedRouting.condition}
-                                    onChange={(e) => {
-                                      const updated = [...(routing.routingLogics || [])];
-                                      updated[nestedIndex] = { ...updated[nestedIndex], condition: e.target.value };
-                                      updateRoutingLogic(routing.id, { routingLogics: updated as any });
-                                    }}
-                                    placeholder='e.g., caller says "Voice Over"'
-                                    className="text-xs"
-                                  />
-                                </div>
-                                <div>
-                                  <Label className="text-xs text-muted-foreground mb-1 block">Action</Label>
-                                  <Input
-                                    value={nestedRouting.action}
-                                    onChange={(e) => {
-                                      const updated = [...(routing.routingLogics || [])];
-                                      updated[nestedIndex] = { ...updated[nestedIndex], action: e.target.value };
-                                      updateRoutingLogic(routing.id, { routingLogics: updated as any });
-                                    }}
-                                    placeholder='e.g., Route to Voice Over logic'
-                                    className="text-xs"
-                                  />
-                                </div>
-                                <div>
-                                  <Label className="text-xs text-muted-foreground mb-1 block">Response</Label>
-                                  <Textarea
-                                    value={nestedRouting.response}
-                                    onChange={(e) => {
-                                      const updated = [...(routing.routingLogics || [])];
-                                      updated[nestedIndex] = { ...updated[nestedIndex], response: e.target.value };
-                                      updateRoutingLogic(routing.id, { routingLogics: updated as any });
-                                    }}
-                                    placeholder='e.g., Great! What type of voice over project do you need?'
-                                    rows={2}
-                                    className="text-xs"
-                                  />
-                                </div>
-                              </div>
-                              {/* Nested Information Gathering */}
-                              <div className="pt-2 border-t space-y-2">
-                                <div className="flex items-center justify-between">
-                                  <h5 className="text-xs font-medium">Information Gathering</h5>
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => {
-                                      const updated = [...(routing.routingLogics || [])];
-                                      const nested = { ...updated[nestedIndex] };
-                                      nested.informationGathering = [...(nested.informationGathering || []), { question: "" }];
-                                      updated[nestedIndex] = nested;
-                                      updateRoutingLogic(routing.id, { routingLogics: updated as any });
-                                    }}
-                                  >
-                                    <Plus className="h-2 w-2 mr-1" />
-                                    Add
-                                  </Button>
-                                </div>
-                                {nestedRouting.informationGathering?.map((item, infoIndex) => (
-                                  <div key={infoIndex} className="flex gap-2">
-                                    <Input
-                                      value={item.question}
-                                      onChange={(e) => {
-                                        const updated = [...(routing.routingLogics || [])];
-                                        const nested = { ...updated[nestedIndex] };
-                                        const infoUpdated = [...(nested.informationGathering || [])];
-                                        infoUpdated[infoIndex] = { question: e.target.value };
-                                        nested.informationGathering = infoUpdated;
-                                        updated[nestedIndex] = nested;
-                                        updateRoutingLogic(routing.id, { routingLogics: updated as any });
-                                      }}
-                                      placeholder="Information question"
-                                      className="flex-1 text-xs"
-                                    />
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => {
-                                        const updated = [...(routing.routingLogics || [])];
-                                        const nested = { ...updated[nestedIndex] };
-                                        nested.informationGathering = (nested.informationGathering || []).filter((_, i) => i !== infoIndex);
-                                        updated[nestedIndex] = nested;
-                                        updateRoutingLogic(routing.id, { routingLogics: updated as any });
-                                      }}
-                                    >
-                                      <X className="h-2 w-2" />
-                                    </Button>
-                                  </div>
-                                ))}
-                              </div>
-                              {/* Nested Lead Capture */}
-                              <div className="pt-2 border-t space-y-2">
-                                <div className="flex items-center justify-between">
-                                  <h5 className="text-xs font-medium">Lead Capture Fields</h5>
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => {
-                                      const updated = [...(routing.routingLogics || [])];
-                                      const nested = { ...updated[nestedIndex] };
-                                      nested.leadCaptureFields = [...(nested.leadCaptureFields || []), { name: "", question: "", required: false, type: "text" as const }];
-                                      updated[nestedIndex] = nested;
-                                      updateRoutingLogic(routing.id, { routingLogics: updated as any });
-                                    }}
-                                  >
-                                    <Plus className="h-2 w-2 mr-1" />
-                                    Add
-                                  </Button>
-                                </div>
-                                {nestedRouting.leadCaptureFields?.map((field, fieldIndex) => (
-                                  <div key={fieldIndex} className="p-2 bg-secondary/50 rounded space-y-1">
-                                    <div className="flex justify-between items-center">
-                                      <span className="text-xs font-medium">Field #{fieldIndex + 1}</span>
-                                      <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => {
-                                          const updated = [...(routing.routingLogics || [])];
-                                          const nested = { ...updated[nestedIndex] };
-                                          nested.leadCaptureFields = (nested.leadCaptureFields || []).filter((_, i) => i !== fieldIndex);
-                                          updated[nestedIndex] = nested;
-                                          updateRoutingLogic(routing.id, { routingLogics: updated as any });
-                                        }}
-                                      >
-                                        <X className="h-2 w-2" />
-                                      </Button>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-1">
-                                      <Input
-                                        value={field.name}
-                                        onChange={(e) => {
-                                          const updated = [...(routing.routingLogics || [])];
-                                          const nested = { ...updated[nestedIndex] };
-                                          const fieldsUpdated = [...(nested.leadCaptureFields || [])];
-                                          fieldsUpdated[fieldIndex] = { ...fieldsUpdated[fieldIndex], name: e.target.value };
-                                          nested.leadCaptureFields = fieldsUpdated;
-                                          updated[nestedIndex] = nested;
-                                          updateRoutingLogic(routing.id, { routingLogics: updated as any });
-                                        }}
-                                        placeholder="Field name"
-                                        className="text-xs"
-                                      />
-                                      <Select
-                                        value={field.type}
-                                        onValueChange={(value: "text" | "email" | "phone" | "number") => {
-                                          const updated = [...(routing.routingLogics || [])];
-                                          const nested = { ...updated[nestedIndex] };
-                                          const fieldsUpdated = [...(nested.leadCaptureFields || [])];
-                                          fieldsUpdated[fieldIndex] = { ...fieldsUpdated[fieldIndex], type: value };
-                                          nested.leadCaptureFields = fieldsUpdated;
-                                          updated[nestedIndex] = nested;
-                                          updateRoutingLogic(routing.id, { routingLogics: updated as any });
-                                        }}
-                                      >
-                                        <SelectTrigger className="text-xs h-7">
-                                          <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="text">Text</SelectItem>
-                                          <SelectItem value="email">Email</SelectItem>
-                                          <SelectItem value="phone">Phone</SelectItem>
-                                          <SelectItem value="number">Number</SelectItem>
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-                                    <Input
-                                      value={field.question}
-                                      onChange={(e) => {
-                                        const updated = [...(routing.routingLogics || [])];
-                                        const nested = { ...updated[nestedIndex] };
-                                        const fieldsUpdated = [...(nested.leadCaptureFields || [])];
-                                        fieldsUpdated[fieldIndex] = { ...fieldsUpdated[fieldIndex], question: e.target.value };
-                                        nested.leadCaptureFields = fieldsUpdated;
-                                        updated[nestedIndex] = nested;
-                                        updateRoutingLogic(routing.id, { routingLogics: updated as any });
-                                      }}
-                                      placeholder="Question to ask"
-                                      className="text-xs"
-                                    />
-                                    <div className="flex items-center gap-2">
-                                      <input
-                                        type="checkbox"
-                                        checked={field.required}
-                                        onChange={(e) => {
-                                          const updated = [...(routing.routingLogics || [])];
-                                          const nested = { ...updated[nestedIndex] };
-                                          const fieldsUpdated = [...(nested.leadCaptureFields || [])];
-                                          fieldsUpdated[fieldIndex] = { ...fieldsUpdated[fieldIndex], required: e.target.checked };
-                                          nested.leadCaptureFields = fieldsUpdated;
-                                          updated[nestedIndex] = nested;
-                                          updateRoutingLogic(routing.id, { routingLogics: updated as any });
-                                        }}
-                                        className="rounded"
-                                      />
-                                      <Label className="text-xs cursor-pointer">Required</Label>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                              {/* Nested Completion Response */}
-                              <div className="pt-2 border-t space-y-2">
-                                <h5 className="text-xs font-medium">Completion Response</h5>
-                                <Textarea
-                                  value={nestedRouting.completionResponse || ""}
-                                  onChange={(e) => {
-                                    const updated = [...(routing.routingLogics || [])];
-                                    const nested = { ...updated[nestedIndex] };
-                                    nested.completionResponse = e.target.value;
-                                    updated[nestedIndex] = nested;
-                                    updateRoutingLogic(routing.id, { routingLogics: updated as any });
-                                  }}
-                                  placeholder="Response after collecting information"
-                                  rows={2}
-                                  className="text-xs"
-                                />
-                              </div>
-                                </CollapsibleContent>
-                              </div>
-                            </Collapsible>
-                          );
-                          })}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Add Nested Routing Logic Button */}
-                    <div className="pt-2 border-t">
-                      <Button type="button" variant="outline" size="sm" onClick={() => addNestedRoutingLogic(routing.id)} className="w-full">
-                        <Plus className="h-3 w-3 mr-1" />
-                        Add Nested Routing Logic
-                      </Button>
-                    </div>
-
-                    {/* Lead Capture Fields (Inside Routing Logic) */}
-                    <div className="pt-4 border-t space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-medium">Lead Capture Fields</h4>
-                        <Button type="button" variant="outline" size="sm" onClick={() => addLeadCaptureField(routing.id)}>
-                          <Plus className="h-3 w-3 mr-1" />
-                          Add Field
-                        </Button>
-                      </div>
-                      {routing.leadCaptureFields.length === 0 && (
-                        <p className="text-xs text-muted-foreground italic">No lead capture fields added yet.</p>
-                      )}
-                      {routing.leadCaptureFields.map((field, index) => (
-                        <div key={index} className="p-3 bg-secondary rounded-lg space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-medium">Field #{index + 1}</span>
-                            <Button type="button" variant="ghost" size="sm" onClick={() => removeLeadCaptureField(routing.id, index)}>
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </div>
-                          <div className="grid grid-cols-2 gap-2">
-                            <Input
-                              value={field.name}
-                              onChange={(e) => {
-                                const updated = [...routing.leadCaptureFields];
-                                updated[index] = { ...updated[index], name: e.target.value };
-                                updateRoutingLogic(routing.id, { leadCaptureFields: updated });
-                              }}
-                              placeholder="Field name (e.g., fullName)"
-                              className="text-xs"
-                            />
-                            <Select
-                              value={field.type}
-                              onValueChange={(value: "text" | "email" | "phone" | "number") => {
-                                const updated = [...routing.leadCaptureFields];
-                                updated[index] = { ...updated[index], type: value };
-                                updateRoutingLogic(routing.id, { leadCaptureFields: updated });
-                              }}
-                            >
-                              <SelectTrigger className="text-xs">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="text">Text</SelectItem>
-                                <SelectItem value="email">Email</SelectItem>
-                                <SelectItem value="phone">Phone</SelectItem>
-                                <SelectItem value="number">Number</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <Input
-                            value={field.question}
-                            onChange={(e) => {
-                              const updated = [...routing.leadCaptureFields];
-                              updated[index] = { ...updated[index], question: e.target.value };
-                              updateRoutingLogic(routing.id, { leadCaptureFields: updated });
-                            }}
-                            placeholder='Question to ask (e.g., What is your full name?)'
-                            className="text-xs"
-                          />
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="checkbox"
-                              id={`required-${routing.id}-${index}`}
-                              checked={field.required}
-                              onChange={(e) => {
-                                const updated = [...routing.leadCaptureFields];
-                                updated[index] = { ...updated[index], required: e.target.checked };
-                                updateRoutingLogic(routing.id, { leadCaptureFields: updated });
-                              }}
-                              className="rounded"
-                            />
-                            <Label htmlFor={`required-${routing.id}-${index}`} className="text-xs cursor-pointer">
-                              Required field
-                            </Label>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                      </CollapsibleContent>
-                    </div>
-                  </Collapsible>
-                );
-                })}
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="pt-4">
+                <div className="flex justify-end pt-4">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      addRoutingLogic();
+                    }}
+                    className="w-full sm:w-auto"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Routing Logic
+                  </Button>
+                </div>
                   </CollapsibleContent>
                 </div>
               </Collapsible>
