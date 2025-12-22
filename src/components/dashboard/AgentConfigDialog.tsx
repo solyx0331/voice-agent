@@ -10,6 +10,9 @@ import { Badge } from "@/components/ui/badge";
 import { X, Plus, Trash2, Clock, Mail, Globe, Eye, ChevronDown, ChevronUp } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { RoutingPreview } from "./RoutingPreview";
+import { IntentEditor, IntentDefinition } from "./IntentEditor";
+import { FieldSchemaDesigner, FieldSchema } from "./FieldSchemaDesigner";
+import { ConversationPreview } from "./ConversationPreview";
 import { toast } from "sonner";
 import { apiService } from "@/lib/api/api";
 import { VoiceAgent } from "@/lib/api/types";
@@ -42,9 +45,12 @@ export function AgentConfigDialog({ open, onOpenChange, agent, onSave, isSaving 
   }>>([]);
   const [customVoicesLoading, setCustomVoicesLoading] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [isConversationPreviewOpen, setIsConversationPreviewOpen] = useState(false);
   
   // State for collapsible sections
   const [isGreetingOpen, setIsGreetingOpen] = useState(true);
+  const [isIntentEditorOpen, setIsIntentEditorOpen] = useState(false);
+  const [isFieldSchemaOpen, setIsFieldSchemaOpen] = useState(false);
   const [isRoutingOpen, setIsRoutingOpen] = useState(true);
   const [isEmailTemplateOpen, setIsEmailTemplateOpen] = useState(true);
   const [isFallbackOpen, setIsFallbackOpen] = useState(true);
@@ -94,6 +100,9 @@ export function AgentConfigDialog({ open, onOpenChange, agent, onSave, isSaving 
     ambientSoundVolume: 1.0, // Default volume
     faqs: [] as Array<{ question: string; answer: string }>,
     intents: [] as Array<{ name: string; prompt: string; response?: string }>,
+    intentDefinitions: [] as IntentDefinition[],
+    fieldSchemas: [] as FieldSchema[],
+    schemaVersion: "2.0",
     callRules: {
       businessHours: {
         enabled: false,
@@ -229,6 +238,9 @@ Call Summary:
         greetingScript: agent.greetingScript || "",
         faqs: agent.faqs || [],
         intents: agent.intents || [],
+        intentDefinitions: agent.intentDefinitions || [],
+        fieldSchemas: agent.fieldSchemas || [],
+        schemaVersion: agent.schemaVersion || "2.0",
         callRules: {
           businessHours: {
             enabled: agent.callRules?.businessHours?.enabled || false,
@@ -305,6 +317,9 @@ Call Summary:
         ambientSoundVolume: 1.0,
         faqs: [],
         intents: [],
+        intentDefinitions: [],
+        fieldSchemas: [],
+        schemaVersion: "2.0",
         callRules: {
           businessHours: {
             enabled: false,
@@ -902,6 +917,63 @@ Call Summary:
                   </p>
                 </div>
               </div>
+
+              {/* 1.5. Intent Definitions */}
+              <Collapsible open={isIntentEditorOpen} onOpenChange={setIsIntentEditorOpen}>
+                <div className="p-4 bg-muted/30 rounded-lg border">
+                  <CollapsibleTrigger className="w-full">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">1.5</div>
+                        <div>
+                          <h3 className="font-semibold text-sm">Intent Definitions</h3>
+                          <p className="text-xs text-muted-foreground">Define intents that the agent will recognize during conversations</p>
+                        </div>
+                      </div>
+                      {isIntentEditorOpen ? (
+                        <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </div>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="pt-4">
+                    <IntentEditor
+                      intents={formData.intentDefinitions || []}
+                      onIntentsChange={(intents) => setFormData({ ...formData, intentDefinitions: intents })}
+                      availableRoutingActions={[]}
+                    />
+                  </CollapsibleContent>
+                </div>
+              </Collapsible>
+
+              {/* 1.6. Field Schema Designer */}
+              <Collapsible open={isFieldSchemaOpen} onOpenChange={setIsFieldSchemaOpen}>
+                <div className="p-4 bg-muted/30 rounded-lg border">
+                  <CollapsibleTrigger className="w-full">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">1.6</div>
+                        <div>
+                          <h3 className="font-semibold text-sm">Field Schema</h3>
+                          <p className="text-xs text-muted-foreground">Define data fields that the agent will collect during conversations</p>
+                        </div>
+                      </div>
+                      {isFieldSchemaOpen ? (
+                        <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </div>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="pt-4">
+                    <FieldSchemaDesigner
+                      fields={formData.fieldSchemas || []}
+                      onFieldsChange={(fields) => setFormData({ ...formData, fieldSchemas: fields })}
+                    />
+                  </CollapsibleContent>
+                </div>
+              </Collapsible>
 
               {/* 2. Routing Logic Blocks (Dynamic) */}
               <Collapsible open={isRoutingOpen} onOpenChange={setIsRoutingOpen}>
@@ -1598,13 +1670,23 @@ Call Summary:
           </div>
         )}
 
-        <div className="flex justify-end gap-2 pt-4 border-t">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+        <div className="flex justify-between items-center pt-4 border-t">
+          <Button
+            variant="outline"
+            onClick={() => setIsConversationPreviewOpen(true)}
+            disabled={!formData.baseLogic.greetingMessage}
+          >
+            <Eye className="h-4 w-4 mr-2" />
+            Preview Conversation
           </Button>
-          <Button onClick={handleSave} disabled={isSaving || !formData.name || !formData.description || (agent && !agent.id)}>
-            {isSaving ? "Saving..." : agent ? "Save Changes" : "Create Agent"}
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave} disabled={isSaving || !formData.name || !formData.description || (agent && !agent.id)}>
+              {isSaving ? "Saving..." : agent ? "Save Changes" : "Create Agent"}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
@@ -1613,6 +1695,16 @@ Call Summary:
     <RoutingPreview
       open={isPreviewOpen}
       onOpenChange={setIsPreviewOpen}
+      greetingMessage={formData.baseLogic.greetingMessage}
+      routingLogics={formData.baseLogic.routingLogics}
+    />
+
+    {/* Conversation Preview Dialog */}
+    <ConversationPreview
+      open={isConversationPreviewOpen}
+      onOpenChange={setIsConversationPreviewOpen}
+      intents={formData.intentDefinitions || []}
+      fields={formData.fieldSchemas || []}
       greetingMessage={formData.baseLogic.greetingMessage}
       routingLogics={formData.baseLogic.routingLogics}
     />

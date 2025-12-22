@@ -69,11 +69,52 @@ export interface VoiceAgent {
     question: string;
     answer: string;
   }>;
+  // Legacy intents (for backward compatibility)
   intents?: Array<{
     name: string;
     prompt: string;
     response?: string;
   }>;
+
+  // Dynamic Intent Definitions (new schema)
+  intentDefinitions?: Array<{
+    id: string;
+    name: string;
+    sampleUtterances: string[];
+    matchingType: "semantic" | "regex";
+    routingAction: string;
+    enabled: boolean;
+    confidenceThreshold?: number;
+    regexPattern?: string;
+    description?: string;
+  }>;
+
+  // Field Schema Definitions (new schema)
+  fieldSchemas?: Array<{
+    id: string;
+    label: string;
+    fieldName: string;
+    dataType: "text" | "phone" | "email" | "number" | "choice" | "date" | "boolean";
+    required: boolean;
+    displayOrder: number;
+    promptText?: string;
+    nlpExtractionHints?: string[];
+    validationRules?: {
+      regex?: string;
+      minLength?: number;
+      maxLength?: number;
+      min?: number;
+      max?: number;
+      pattern?: string;
+      errorMessage?: string;
+    };
+    choiceOptions?: string[];
+    defaultValue?: string;
+    description?: string;
+  }>;
+
+  // Schema version for migration/compatibility
+  schemaVersion?: string;
   callRules?: {
     businessHours: {
       enabled: boolean;
