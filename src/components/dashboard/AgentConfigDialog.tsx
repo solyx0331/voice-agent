@@ -56,7 +56,6 @@ export function AgentConfigDialog({ open, onOpenChange, agent, onSave, isSaving 
   // State for collapsible sections
   const [isGreetingOpen, setIsGreetingOpen] = useState(true);
   const [isIntentEditorOpen, setIsIntentEditorOpen] = useState(false);
-  const [isFieldSchemaOpen, setIsFieldSchemaOpen] = useState(false);
   const [isRoutingOpen, setIsRoutingOpen] = useState(true);
   const [isEmailTemplateOpen, setIsEmailTemplateOpen] = useState(true);
   const [isFallbackOpen, setIsFallbackOpen] = useState(true);
@@ -1518,34 +1517,6 @@ Call Summary:
                       availableRoutingActions={[]}
                       customRoutingActions={formData.customRoutingActions || []}
                       onCustomRoutingActionsChange={(actions) => setFormData({ ...formData, customRoutingActions: actions })}
-                    />
-                  </CollapsibleContent>
-                </div>
-              </Collapsible>
-
-              {/* 1.6. Field Schema Designer */}
-              <Collapsible open={isFieldSchemaOpen} onOpenChange={setIsFieldSchemaOpen}>
-                <div className="p-4 bg-muted/30 rounded-lg border">
-                  <CollapsibleTrigger className="w-full">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">1.6</div>
-                        <div>
-                          <h3 className="font-semibold text-sm">Field Schema</h3>
-                          <p className="text-xs text-muted-foreground">Define data fields that the agent will collect during conversations</p>
-                        </div>
-                      </div>
-                      {isFieldSchemaOpen ? (
-                        <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                      ) : (
-                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                      )}
-                    </div>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="pt-4">
-                    <FieldSchemaDesigner
-                      fields={formData.fieldSchemas || []}
-                      onFieldsChange={(fields) => setFormData({ ...formData, fieldSchemas: fields })}
                     />
                   </CollapsibleContent>
                 </div>
