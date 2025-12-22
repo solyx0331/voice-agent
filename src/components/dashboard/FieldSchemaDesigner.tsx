@@ -42,6 +42,12 @@ interface FieldSchemaDesignerProps {
 export function FieldSchemaDesigner({ fields, onFieldsChange }: FieldSchemaDesignerProps) {
   const [openFields, setOpenFields] = useState<Set<string>>(new Set());
 
+  // Default regex patterns and error messages for email and phone
+  const getDefaultEmailRegex = () => "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$";
+  const getDefaultEmailError = () => "Please enter a valid email address";
+  const getDefaultPhoneRegex = () => "^[+]?[(]?[0-9]{1,4}[)]?[-\\s.]?[(]?[0-9]{1,4}[)]?[-\\s.]?[0-9]{1,9}$";
+  const getDefaultPhoneError = () => "Please enter a valid phone number";
+
   const toggleField = (fieldId: string) => {
     setOpenFields(prev => {
       const newSet = new Set(prev);
@@ -158,23 +164,17 @@ export function FieldSchemaDesigner({ fields, onFieldsChange }: FieldSchemaDesig
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold">Field Schema</h3>
-          <p className="text-sm text-muted-foreground">
-            Define the data fields that the agent will collect during conversations. Fields can be required or optional, with custom validation rules.
-          </p>
-        </div>
-        <Button type="button" onClick={addField} size="sm">
-          <Plus className="h-4 w-4 mr-2" />
-          Add Field
-        </Button>
+      <div>
+        <h3 className="text-lg font-semibold">Field Schema</h3>
+        <p className="text-sm text-muted-foreground">
+          Define the data fields that the agent will collect during conversations. Fields can be required or optional, with custom validation rules.
+        </p>
       </div>
 
       {fields.length === 0 ? (
         <Card>
           <CardContent className="py-8 text-center text-muted-foreground">
-            <p>No fields defined. Click "Add Field" to create one.</p>
+            <p>No fields defined. Click "Add Field" below to create one.</p>
           </CardContent>
         </Card>
       ) : (
@@ -283,9 +283,26 @@ export function FieldSchemaDesigner({ fields, onFieldsChange }: FieldSchemaDesig
                         <Label htmlFor={`field-type-${field.id}`}>Data Type *</Label>
                         <Select
                           value={field.dataType}
-                          onValueChange={(value: FieldSchema["dataType"]) =>
-                            updateField(field.id, { dataType: value })
-                          }
+                          onValueChange={(value: FieldSchema["dataType"]) => {
+                            const updates: Partial<FieldSchema> = { dataType: value };
+                            
+                            // Auto-populate regex pattern and error message for email/phone
+                            if (value === "email") {
+                              updates.validationRules = {
+                                ...field.validationRules,
+                                pattern: field.validationRules?.pattern || getDefaultEmailRegex(),
+                                errorMessage: field.validationRules?.errorMessage || getDefaultEmailError(),
+                              };
+                            } else if (value === "phone") {
+                              updates.validationRules = {
+                                ...field.validationRules,
+                                pattern: field.validationRules?.pattern || getDefaultPhoneRegex(),
+                                errorMessage: field.validationRules?.errorMessage || getDefaultPhoneError(),
+                              };
+                            }
+                            
+                            updateField(field.id, updates);
+                          }}
                         >
                           <SelectTrigger>
                             <SelectValue />
@@ -498,11 +515,24 @@ export function FieldSchemaDesigner({ fields, onFieldsChange }: FieldSchemaDesig
                               },
                             })
                           }
-                          placeholder="e.g., ^[A-Za-z0-9]+$"
+                          placeholder={
+                            field.dataType === "email" 
+                              ? getDefaultEmailRegex()
+                              : field.dataType === "phone"
+                              ? getDefaultPhoneRegex()
+                              : "e.g., ^[A-Za-z0-9]+$"
+                          }
                         />
                         <p className="text-xs text-muted-foreground mt-1">
-                          Optional custom validation pattern. Leave empty to use default validation for the data type.
+                          {field.dataType === "email" || field.dataType === "phone" 
+                            ? `Default pattern for ${field.dataType === "email" ? "email" : "phone"} is pre-filled. You can customize it if needed.`
+                            : "Optional custom validation pattern. Leave empty to use default validation for the data type."}
                         </p>
+                        {(field.dataType === "email" || field.dataType === "phone") && !field.validationRules?.pattern && (
+                          <p className="text-xs text-blue-600 mt-1 font-medium">
+                            💡 Using default {field.dataType === "email" ? "email" : "phone"} validation pattern
+                          </p>
+                        )}
                       </div>
                       <div className="mt-4">
                         <Label htmlFor={`field-error-${field.id}`}>Custom Error Message</Label>
@@ -517,8 +547,19 @@ export function FieldSchemaDesigner({ fields, onFieldsChange }: FieldSchemaDesig
                               },
                             })
                           }
-                          placeholder="e.g., Please enter a valid email address"
+                          placeholder={
+                            field.dataType === "email" 
+                              ? getDefaultEmailError()
+                              : field.dataType === "phone"
+                              ? getDefaultPhoneError()
+                              : "e.g., Please enter a valid value"
+                          }
                         />
+                        {(field.dataType === "email" || field.dataType === "phone") && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Default error message for {field.dataType === "email" ? "email" : "phone"} is pre-filled. You can customize it if needed.
+                          </p>
+                        )}
                       </div>
                     </div>
                   </CardContent>
@@ -528,6 +569,13 @@ export function FieldSchemaDesigner({ fields, onFieldsChange }: FieldSchemaDesig
           ))}
         </div>
       )}
+      
+      <div className="flex justify-end pt-2">
+        <Button type="button" onClick={addField} size="sm" className="w-full sm:w-auto">
+          <Plus className="h-4 w-4 mr-2" />
+          Add Field
+        </Button>
+      </div>
     </div>
   );
 }
