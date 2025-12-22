@@ -14,6 +14,10 @@ import { RoutingPreview } from "./RoutingPreview";
 import { IntentEditor, IntentDefinition } from "./IntentEditor";
 import { FieldSchemaDesigner, FieldSchema } from "./FieldSchemaDesigner";
 import { ConversationPreview } from "./ConversationPreview";
+import { ConditionalRoutingEditor } from "./ConditionalRoutingEditor";
+import { RouteFallbackEditor } from "./RouteFallbackEditor";
+import { EndConditionEditor } from "./EndConditionEditor";
+import { GlobalRouteHandlers } from "./GlobalRouteHandlers";
 import { toast } from "sonner";
 import { apiService } from "@/lib/api/api";
 import { VoiceAgent } from "@/lib/api/types";
@@ -153,26 +157,41 @@ Call Summary:
     },
     baseLogic: {
       greetingMessage: "",
+      globalRouteHandlers: [],
       routingLogics: [] as Array<{
         id: string;
         name: string;
         condition: string;
+        conditionalLogic?: {
+          type: "field-value" | "intent-confidence" | "custom-expression";
+          fieldName?: string;
+          operator?: "equals" | "contains" | "greater-than" | "less-than" | "exists" | "not-exists";
+          value?: any;
+          intentName?: string;
+          minConfidence?: number;
+          expression?: string;
+        };
         action: string;
         response: string;
+        followUpPrompt?: string;
         informationGathering: Array<{ question: string }>;
         leadCaptureFields: Array<{ name: string; question: string; required: boolean; type: "text" | "email" | "phone" | "number" }>;
-        completionResponse?: string; // Response after collecting information/lead data
-        routingLogics?: Array<{
-          id: string;
-          name: string;
-          condition: string;
-          action: string;
-          response: string;
-          informationGathering: Array<{ question: string }>;
-          leadCaptureFields: Array<{ name: string; question: string; required: boolean; type: "text" | "email" | "phone" | "number" }>;
-          completionResponse?: string; // Response after collecting information/lead data
-          routingLogics?: Array<any>; // Recursive for deeper nesting
-        }>;
+        completionResponse?: string;
+        fallback?: {
+          enabled: boolean;
+          maxAttempts?: number;
+          fallbackMessage?: string;
+          escalationAction?: string;
+          escalationMessage?: string;
+        };
+        endCondition?: {
+          enabled: boolean;
+          condition?: string;
+          endMessage?: string;
+        };
+        associatedIntents?: string[];
+        displayOrder?: number;
+        routingLogics?: Array<any>; // Recursive for deeper nesting
       }>,
     },
   });
@@ -299,6 +318,7 @@ Call Summary:
         },
         baseLogic: {
           greetingMessage: agent.baseLogic?.greetingMessage || "",
+          globalRouteHandlers: agent.baseLogic?.globalRouteHandlers || [],
           routingLogics: agent.baseLogic?.routingLogics || (agent.baseLogic?.responseLogic ? agent.baseLogic.responseLogic.map((rl, idx) => ({
             id: `routing-${idx}`,
             name: `Routing Logic ${idx + 1}`,
@@ -377,6 +397,7 @@ Call Summary:
         },
         baseLogic: {
           greetingMessage: "",
+          globalRouteHandlers: [],
           routingLogics: [],
         },
       });
@@ -1690,13 +1711,53 @@ Call Summary:
                 </div>
               </Collapsible>
 
-              {/* 2. Routing Logic Blocks (Dynamic) */}
+              {/* 2.1. Global Route Handlers */}
+              <Collapsible open={isRoutingOpen} onOpenChange={setIsRoutingOpen}>
+                <div className="space-y-4 p-4 bg-muted/30 rounded-lg border">
+                  <CollapsibleTrigger className="w-full">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">2.1</div>
+                        <div>
+                          <h3 className="font-semibold text-sm">Global Route Handlers</h3>
+                          <p className="text-xs text-muted-foreground">Define handlers for special actions that apply across all routes</p>
+                        </div>
+                      </div>
+                      {isRoutingOpen ? (
+                        <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </div>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="pt-4">
+                    <GlobalRouteHandlers
+                      handlers={formData.baseLogic.globalRouteHandlers || []}
+                      onHandlersChange={(handlers) =>
+                        setFormData({
+                          ...formData,
+                          baseLogic: {
+                            ...formData.baseLogic,
+                            globalRouteHandlers: handlers,
+                          },
+                        })
+                      }
+                      customRoutingActions={formData.customRoutingActions || []}
+                      onCustomRoutingActionsChange={(actions) =>
+                        setFormData({ ...formData, customRoutingActions: actions })
+                      }
+                    />
+                  </CollapsibleContent>
+                </div>
+              </Collapsible>
+
+              {/* 2.2. Routing Logic Blocks (Dynamic) */}
               <Collapsible open={isRoutingOpen} onOpenChange={setIsRoutingOpen}>
                 <div className="space-y-4 p-4 bg-muted/30 rounded-lg border overflow-x-auto">
                   <CollapsibleTrigger className="w-full">
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">2</div>
+                        <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">2.2</div>
                         <div>
                           <h3 className="font-semibold text-sm">Routing Logic</h3>
                           <p className="text-xs text-muted-foreground">Define routing blocks with condition, action, response, and data collection</p>
@@ -1770,45 +1831,7 @@ Call Summary:
                 </div>
               </Collapsible>
 
-              {/* 3. Summary / Email Template */}
-              <Collapsible open={isEmailTemplateOpen} onOpenChange={setIsEmailTemplateOpen}>
-                <div className="p-4 bg-muted/30 rounded-lg border">
-                  <CollapsibleTrigger className="w-full">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">3</div>
-                        <div>
-                          <h3 className="font-semibold text-sm">Summary / Email Template</h3>
-                          <p className="text-xs text-muted-foreground">Email will be sent to client (caller) after call ends with exact information collected</p>
-                        </div>
-                      </div>
-                      {isEmailTemplateOpen ? (
-                        <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                      ) : (
-                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                      )}
-                    </div>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="pt-4">
-                <div className="flex justify-end pt-4">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      addRoutingLogic();
-                    }}
-                    className="w-full sm:w-auto"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Routing Logic
-                  </Button>
-                </div>
-                  </CollapsibleContent>
-                </div>
-              </Collapsible>
-
+              
               {/* 3. Summary / Email Template */}
               <Collapsible open={isEmailTemplateOpen} onOpenChange={setIsEmailTemplateOpen}>
                 <div className="p-4 bg-muted/30 rounded-lg border">

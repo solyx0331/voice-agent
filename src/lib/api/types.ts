@@ -165,12 +165,32 @@ export interface VoiceAgent {
   // Base Receptionist Logic
   baseLogic?: {
     greetingMessage: string;
+    // Global route handlers for special actions (opt-out, transfer, etc.)
+    globalRouteHandlers?: Array<{
+      id: string;
+      action: string; // e.g., "opt-out", "transfer", "emergency"
+      condition?: string; // Optional condition for when to trigger
+      response: string; // Response message
+      followUpPrompt?: string; // Optional follow-up after handler
+      endCall?: boolean; // Whether to end call after handler
+    }>;
     routingLogics?: Array<{
       id: string;
       name: string;
-      condition: string;
-      action: string;
-      response: string;
+      condition: string; // Condition to match (e.g., "caller says 'Evolved Sound'")
+      // Enhanced conditional routing
+      conditionalLogic?: {
+        type: "field-value" | "intent-confidence" | "custom-expression";
+        fieldName?: string; // For field-value type
+        operator?: "equals" | "contains" | "greater-than" | "less-than" | "exists" | "not-exists";
+        value?: any; // Comparison value
+        intentName?: string; // For intent-confidence type
+        minConfidence?: number; // For intent-confidence type (0-1)
+        expression?: string; // For custom-expression type (e.g., "field.email && field.phone")
+      };
+      action: string; // Routing action (e.g., "callback", "quote", "continue-flow")
+      response: string; // Initial response message
+      followUpPrompt?: string; // Prompt after initial response
       informationGathering: Array<{
         question: string;
       }>;
@@ -181,24 +201,25 @@ export interface VoiceAgent {
         type: "text" | "email" | "phone" | "number";
       }>;
       completionResponse?: string; // Response after collecting information/lead data
-      routingLogics?: Array<{
-        id: string;
-        name: string;
-        condition: string;
-        action: string;
-        response: string;
-        informationGathering: Array<{
-          question: string;
-        }>;
-        leadCaptureFields: Array<{
-          name: string;
-          question: string;
-          required: boolean;
-          type: "text" | "email" | "phone" | "number";
-        }>;
-        completionResponse?: string; // Response after collecting information/lead data
-        routingLogics?: Array<any>; // Recursive type for deeper nesting
-      }>;
+      // Inline fallback/escalation logic per route
+      fallback?: {
+        enabled: boolean;
+        maxAttempts?: number; // Number of failed attempts before fallback
+        fallbackMessage?: string; // Message when fallback triggers
+        escalationAction?: string; // Action to take (e.g., "transfer", "voicemail", "end-call")
+        escalationMessage?: string; // Message for escalation
+      };
+      // End condition flag
+      endCondition?: {
+        enabled: boolean;
+        condition?: string; // Condition to end flow early (e.g., "allRequiredFieldsFilled")
+        endMessage?: string; // Final message before ending
+      };
+      // Intent associations
+      associatedIntents?: string[]; // Array of intent IDs that trigger this route
+      // Display order for sequential steps
+      displayOrder?: number;
+      routingLogics?: Array<any>; // Recursive type for nested routing
     }>;
     // Legacy fields for backward compatibility
     primaryIntentPrompts?: string[];
