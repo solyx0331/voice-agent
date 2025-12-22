@@ -9,6 +9,7 @@ import { X, Plus, Trash2, Edit2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { RoutingActionSelector } from "./RoutingActionSelector";
 
 export interface IntentDefinition {
   id: string;
@@ -26,9 +27,17 @@ interface IntentEditorProps {
   intents: IntentDefinition[];
   onIntentsChange: (intents: IntentDefinition[]) => void;
   availableRoutingActions?: string[]; // Predefined routing actions
+  customRoutingActions?: string[]; // User-defined custom routing actions
+  onCustomRoutingActionsChange?: (actions: string[]) => void; // Callback to update custom actions
 }
 
-export function IntentEditor({ intents, onIntentsChange, availableRoutingActions = [] }: IntentEditorProps) {
+export function IntentEditor({ 
+  intents, 
+  onIntentsChange, 
+  availableRoutingActions = [],
+  customRoutingActions = [],
+  onCustomRoutingActionsChange,
+}: IntentEditorProps) {
   const [editingIntent, setEditingIntent] = useState<string | null>(null);
   const [openIntents, setOpenIntents] = useState<Set<string>>(new Set());
 
@@ -43,9 +52,17 @@ export function IntentEditor({ intents, onIntentsChange, availableRoutingActions
     "escalate",
   ];
 
-  const routingActions = availableRoutingActions.length > 0 
-    ? availableRoutingActions 
-    : defaultRoutingActions;
+  // Combine default actions with custom actions (avoid duplicates)
+  const allRoutingActions = [
+    ...(availableRoutingActions.length > 0 ? availableRoutingActions : defaultRoutingActions),
+    ...customRoutingActions.filter(action => !defaultRoutingActions.includes(action) && !availableRoutingActions.includes(action)),
+  ];
+
+  const handleAddCustomAction = (newAction: string) => {
+    if (onCustomRoutingActionsChange && !customRoutingActions.includes(newAction)) {
+      onCustomRoutingActionsChange([...customRoutingActions, newAction]);
+    }
+  };
 
   const toggleIntent = (intentId: string) => {
     setOpenIntents(prev => {
@@ -116,23 +133,17 @@ export function IntentEditor({ intents, onIntentsChange, availableRoutingActions
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold">Intent Definitions</h3>
-          <p className="text-sm text-muted-foreground">
-            Define intents that the agent will recognize during conversations. Intents can trigger routing actions or special behaviors.
-          </p>
-        </div>
-        <Button type="button" onClick={addIntent} size="sm">
-          <Plus className="h-4 w-4 mr-2" />
-          Add Intent
-        </Button>
+      <div>
+        <h3 className="text-lg font-semibold">Intent Definitions</h3>
+        <p className="text-sm text-muted-foreground">
+          Define intents that the agent will recognize during conversations. Intents can trigger routing actions or special behaviors.
+        </p>
       </div>
 
       {intents.length === 0 ? (
         <Card>
           <CardContent className="py-8 text-center text-muted-foreground">
-            <p>No intents defined. Click "Add Intent" to create one.</p>
+            <p>No intents defined. Click "Add Intent" below to create one.</p>
           </CardContent>
         </Card>
       ) : (
@@ -209,21 +220,13 @@ export function IntentEditor({ intents, onIntentsChange, availableRoutingActions
                       </div>
                       <div>
                         <Label htmlFor={`intent-routing-${intent.id}`}>Routing Action *</Label>
-                        <Select
+                        <RoutingActionSelector
                           value={intent.routingAction}
                           onValueChange={(value) => updateIntent(intent.id, { routingAction: value })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select action" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {routingActions.map((action) => (
-                              <SelectItem key={action} value={action}>
-                                {action}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          availableActions={allRoutingActions}
+                          customActions={customRoutingActions}
+                          onAddCustomAction={handleAddCustomAction}
+                        />
                       </div>
                     </div>
 
@@ -341,6 +344,13 @@ export function IntentEditor({ intents, onIntentsChange, availableRoutingActions
           ))}
         </div>
       )}
+      
+      <div className="flex justify-end pt-2">
+        <Button type="button" onClick={addIntent} size="sm" className="w-full sm:w-auto">
+          <Plus className="h-4 w-4 mr-2" />
+          Add Intent
+        </Button>
+      </div>
     </div>
   );
 }

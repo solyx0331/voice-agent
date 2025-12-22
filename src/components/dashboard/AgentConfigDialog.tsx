@@ -105,6 +105,7 @@ export function AgentConfigDialog({ open, onOpenChange, agent, onSave, isSaving 
     intentDefinitions: [] as IntentDefinition[],
     fieldSchemas: [] as FieldSchema[],
     schemaVersion: "2.0",
+    customRoutingActions: [] as string[],
     callRules: {
       businessHours: {
         enabled: false,
@@ -243,6 +244,16 @@ Call Summary:
         intentDefinitions: agent.intentDefinitions || [],
         fieldSchemas: agent.fieldSchemas || [],
         schemaVersion: agent.schemaVersion || "2.0",
+        customRoutingActions: (() => {
+          // Extract custom actions from existing intents if customRoutingActions is not set
+          const defaultActions = ["callback", "quote", "opt-out", "transfer", "voicemail", "end-call", "continue-flow", "escalate"];
+          const existingCustomActions = agent.customRoutingActions || [];
+          const intentActions = (agent.intentDefinitions || [])
+            .map(intent => intent.routingAction)
+            .filter(action => action && !defaultActions.includes(action) && !existingCustomActions.includes(action));
+          // Combine and deduplicate
+          return [...new Set([...existingCustomActions, ...intentActions])];
+        })(),
         callRules: {
           businessHours: {
             enabled: agent.callRules?.businessHours?.enabled || false,
@@ -324,6 +335,7 @@ Call Summary:
         intentDefinitions: [],
         fieldSchemas: [],
         schemaVersion: "2.0",
+        customRoutingActions: [],
         callRules: {
           businessHours: {
             enabled: false,
@@ -977,6 +989,8 @@ Call Summary:
                       intents={formData.intentDefinitions || []}
                       onIntentsChange={(intents) => setFormData({ ...formData, intentDefinitions: intents })}
                       availableRoutingActions={[]}
+                      customRoutingActions={formData.customRoutingActions || []}
+                      onCustomRoutingActionsChange={(actions) => setFormData({ ...formData, customRoutingActions: actions })}
                     />
                   </CollapsibleContent>
                 </div>
