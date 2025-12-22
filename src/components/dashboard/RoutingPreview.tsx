@@ -11,7 +11,7 @@ interface RoutingLogic {
   action: string;
   response: string;
   informationGathering?: Array<{ question: string }>;
-  leadCaptureFields?: Array<{ name: string; question: string; required: boolean; type: string }>;
+  fieldSchemas?: Array<{ id: string; label: string; fieldName: string; dataType: string; required: boolean }>;
   completionResponse?: string;
   routingLogics?: RoutingLogic[];
 }
@@ -152,10 +152,10 @@ const RoutingNode = ({ routing, level, index, isLast }: RoutingNodeProps) => {
                     <span>{routing.informationGathering.length} Info</span>
                   </div>
                 )}
-                {routing.leadCaptureFields && routing.leadCaptureFields.length > 0 && (
+                {routing.fieldSchemas && routing.fieldSchemas.length > 0 && (
                   <div className="flex items-center gap-1 px-2 py-0.5 bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 rounded text-xs">
                     <Database className="h-3 w-3" />
-                    <span>{routing.leadCaptureFields.length} Lead Fields</span>
+                    <span>{routing.fieldSchemas.length} Fields</span>
                   </div>
                 )}
               </div>

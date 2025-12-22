@@ -176,7 +176,6 @@ Call Summary:
         response: string;
         followUpPrompt?: string;
         informationGathering: Array<{ question: string }>;
-        leadCaptureFields: Array<{ name: string; question: string; required: boolean; type: "text" | "email" | "phone" | "number" }>;
         completionResponse?: string;
         fallback?: {
           enabled: boolean;
@@ -192,6 +191,7 @@ Call Summary:
         };
         associatedIntents?: string[];
         displayOrder?: number;
+        fieldSchemas?: FieldSchema[]; // Field schemas specific to this routing logic block
         routingLogics?: Array<any>; // Recursive for deeper nesting
       }>,
     },
@@ -327,7 +327,6 @@ Call Summary:
             action: rl.action,
             response: rl.response,
             informationGathering: agent.baseLogic?.leadCaptureQuestions || [],
-            leadCaptureFields: agent.leadCapture?.fields || [],
           })) : []),
         },
         ambientSound: agent.ambientSound,
@@ -500,9 +499,11 @@ Call Summary:
           condition: "",
           action: "",
           response: "",
+          followUpPrompt: "",
           informationGathering: [],
-          leadCaptureFields: [],
           completionResponse: "",
+          displayOrder: formData.baseLogic.routingLogics.length,
+          fieldSchemas: [],
         }],
       },
     });
@@ -556,7 +557,6 @@ Call Summary:
                 action: "",
                 response: "",
                 informationGathering: [],
-                leadCaptureFields: [],
                 completionResponse: "",
               } as typeof formData.baseLogic.routingLogics[0],
             ],
@@ -639,9 +639,11 @@ Call Summary:
         condition: "",
         action: "",
         response: "",
+        followUpPrompt: "",
         informationGathering: [],
-        leadCaptureFields: [],
         completionResponse: "",
+        displayOrder: (routing.routingLogics?.length || 0),
+        fieldSchemas: [],
         routingLogics: [],
       } as typeof formData.baseLogic.routingLogics[0];
 
@@ -1014,228 +1016,6 @@ Call Summary:
               ))}
             </div>
 
-            {/* Lead Capture Fields */}
-            <div className="pt-2 border-t space-y-2">
-              <div className="flex items-center justify-between">
-                <h5 className={cn(textSize, "font-medium")}>Lead Capture Fields</h5>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    const currentFields = routing.leadCaptureFields || [];
-                    const updated = [...currentFields, { name: "", question: "", required: false, type: "text" as const }];
-                    if (parentId) {
-                      const findAndUpdate = (routings: typeof formData.baseLogic.routingLogics): typeof formData.baseLogic.routingLogics => {
-                        return routings.map((r) => {
-                          if (r.id === routing.id) {
-                            return { ...r, leadCaptureFields: updated };
-                          }
-                          if (r.routingLogics && r.routingLogics.length > 0) {
-                            return { ...r, routingLogics: findAndUpdate(r.routingLogics as typeof formData.baseLogic.routingLogics) };
-                          }
-                          return r;
-                        });
-                      };
-                      setFormData({
-                        ...formData,
-                        baseLogic: {
-                          ...formData.baseLogic,
-                          routingLogics: findAndUpdate(formData.baseLogic.routingLogics),
-                        },
-                      });
-                    } else {
-                      updateRoutingLogic(routing.id, { leadCaptureFields: updated });
-                    }
-                  }}
-                >
-                  <Plus className={cn(iconSizeSmall, "mr-1")} />
-                  Add
-                </Button>
-              </div>
-              {(routing.leadCaptureFields || []).map((field, fieldIndex) => (
-                <div key={fieldIndex} className={cn(fieldPadding, fieldBg, "rounded space-y-1")}>
-                  <div className="flex justify-between items-center">
-                    <span className={cn(textSize, "font-medium")}>Field #{fieldIndex + 1}</span>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        const currentFields = routing.leadCaptureFields || [];
-                        const updated = currentFields.filter((_, i) => i !== fieldIndex);
-                        if (parentId) {
-                          const findAndUpdate = (routings: typeof formData.baseLogic.routingLogics): typeof formData.baseLogic.routingLogics => {
-                            return routings.map((r) => {
-                              if (r.id === routing.id) {
-                                return { ...r, leadCaptureFields: updated };
-                              }
-                              if (r.routingLogics && r.routingLogics.length > 0) {
-                                return { ...r, routingLogics: findAndUpdate(r.routingLogics as typeof formData.baseLogic.routingLogics) };
-                              }
-                              return r;
-                            });
-                          };
-                          setFormData({
-                            ...formData,
-                            baseLogic: {
-                              ...formData.baseLogic,
-                              routingLogics: findAndUpdate(formData.baseLogic.routingLogics),
-                            },
-                          });
-                        } else {
-                          updateRoutingLogic(routing.id, { leadCaptureFields: updated });
-                        }
-                      }}
-                    >
-                      <X className={iconSizeSmall} />
-                    </Button>
-                  </div>
-                  <div className="grid grid-cols-2 gap-1">
-                    <Input
-                      value={field.name}
-                      onChange={(e) => {
-                        const currentFields = routing.leadCaptureFields || [];
-                        const updated = [...currentFields];
-                        updated[fieldIndex] = { ...updated[fieldIndex], name: e.target.value };
-                        if (parentId) {
-                          const findAndUpdate = (routings: typeof formData.baseLogic.routingLogics): typeof formData.baseLogic.routingLogics => {
-                            return routings.map((r) => {
-                              if (r.id === routing.id) {
-                                return { ...r, leadCaptureFields: updated };
-                              }
-                              if (r.routingLogics && r.routingLogics.length > 0) {
-                                return { ...r, routingLogics: findAndUpdate(r.routingLogics as typeof formData.baseLogic.routingLogics) };
-                              }
-                              return r;
-                            });
-                          };
-                          setFormData({
-                            ...formData,
-                            baseLogic: {
-                              ...formData.baseLogic,
-                              routingLogics: findAndUpdate(formData.baseLogic.routingLogics),
-                            },
-                          });
-                        } else {
-                          updateRoutingLogic(routing.id, { leadCaptureFields: updated });
-                        }
-                      }}
-                      placeholder="Field name"
-                      className={textSize}
-                    />
-                    <Select
-                      value={field.type}
-                      onValueChange={(value: "text" | "email" | "phone" | "number") => {
-                        const currentFields = routing.leadCaptureFields || [];
-                        const updated = [...currentFields];
-                        updated[fieldIndex] = { ...updated[fieldIndex], type: value };
-                        if (parentId) {
-                          const findAndUpdate = (routings: typeof formData.baseLogic.routingLogics): typeof formData.baseLogic.routingLogics => {
-                            return routings.map((r) => {
-                              if (r.id === routing.id) {
-                                return { ...r, leadCaptureFields: updated };
-                              }
-                              if (r.routingLogics && r.routingLogics.length > 0) {
-                                return { ...r, routingLogics: findAndUpdate(r.routingLogics as typeof formData.baseLogic.routingLogics) };
-                              }
-                              return r;
-                            });
-                          };
-                          setFormData({
-                            ...formData,
-                            baseLogic: {
-                              ...formData.baseLogic,
-                              routingLogics: findAndUpdate(formData.baseLogic.routingLogics),
-                            },
-                          });
-                        } else {
-                          updateRoutingLogic(routing.id, { leadCaptureFields: updated });
-                        }
-                      }}
-                    >
-                      <SelectTrigger className={cn(textSize, "h-7")}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="text">Text</SelectItem>
-                        <SelectItem value="email">Email</SelectItem>
-                        <SelectItem value="phone">Phone</SelectItem>
-                        <SelectItem value="number">Number</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <Input
-                    value={field.question}
-                    onChange={(e) => {
-                      const currentFields = routing.leadCaptureFields || [];
-                      const updated = [...currentFields];
-                      updated[fieldIndex] = { ...updated[fieldIndex], question: e.target.value };
-                      if (parentId) {
-                        const findAndUpdate = (routings: typeof formData.baseLogic.routingLogics): typeof formData.baseLogic.routingLogics => {
-                          return routings.map((r) => {
-                            if (r.id === routing.id) {
-                              return { ...r, leadCaptureFields: updated };
-                            }
-                            if (r.routingLogics && r.routingLogics.length > 0) {
-                              return { ...r, routingLogics: findAndUpdate(r.routingLogics as typeof formData.baseLogic.routingLogics) };
-                            }
-                            return r;
-                          });
-                        };
-                        setFormData({
-                          ...formData,
-                          baseLogic: {
-                            ...formData.baseLogic,
-                            routingLogics: findAndUpdate(formData.baseLogic.routingLogics),
-                          },
-                        });
-                      } else {
-                        updateRoutingLogic(routing.id, { leadCaptureFields: updated });
-                      }
-                    }}
-                    placeholder="Question to ask"
-                    className={textSize}
-                  />
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={field.required}
-                      onChange={(e) => {
-                        const currentFields = routing.leadCaptureFields || [];
-                        const updated = [...currentFields];
-                        updated[fieldIndex] = { ...updated[fieldIndex], required: e.target.checked };
-                        if (parentId) {
-                          const findAndUpdate = (routings: typeof formData.baseLogic.routingLogics): typeof formData.baseLogic.routingLogics => {
-                            return routings.map((r) => {
-                              if (r.id === routing.id) {
-                                return { ...r, leadCaptureFields: updated };
-                              }
-                              if (r.routingLogics && r.routingLogics.length > 0) {
-                                return { ...r, routingLogics: findAndUpdate(r.routingLogics as typeof formData.baseLogic.routingLogics) };
-                              }
-                              return r;
-                            });
-                          };
-                          setFormData({
-                            ...formData,
-                            baseLogic: {
-                              ...formData.baseLogic,
-                              routingLogics: findAndUpdate(formData.baseLogic.routingLogics),
-                            },
-                          });
-                        } else {
-                          updateRoutingLogic(routing.id, { leadCaptureFields: updated });
-                        }
-                      }}
-                      className="rounded"
-                    />
-                    <Label className={cn(textSize, "cursor-pointer")}>Required</Label>
-                  </div>
-                </div>
-              ))}
-            </div>
-
             {/* Completion Response */}
             <div className="pt-2 border-t space-y-2">
               <h5 className={cn(textSize, "font-medium")}>Completion Response</h5>
@@ -1270,6 +1050,47 @@ Call Summary:
                 className={textSize}
               />
             </div>
+
+            {/* Field Schema - Only show at top level */}
+            {depth === 0 && (
+              <div className="pt-2 border-t space-y-2">
+                <div className="flex items-center justify-between">
+                  <h5 className={cn(textSize, "font-medium")}>Field Schema</h5>
+                  <p className={cn(textSize, "text-muted-foreground text-xs")}>
+                    Define data fields specific to this routing block
+                  </p>
+                </div>
+                <div className={cn("border-l-2 border-primary/10 pl-3")}>
+                  <FieldSchemaDesigner
+                    fields={routing.fieldSchemas || []}
+                    onFieldsChange={(fields) => {
+                      if (parentId) {
+                        const findAndUpdate = (routings: typeof formData.baseLogic.routingLogics): typeof formData.baseLogic.routingLogics => {
+                          return routings.map((r) => {
+                            if (r.id === routing.id) {
+                              return { ...r, fieldSchemas: fields };
+                            }
+                            if (r.routingLogics && r.routingLogics.length > 0) {
+                              return { ...r, routingLogics: findAndUpdate(r.routingLogics as typeof formData.baseLogic.routingLogics) };
+                            }
+                            return r;
+                          });
+                        };
+                        setFormData({
+                          ...formData,
+                          baseLogic: {
+                            ...formData.baseLogic,
+                            routingLogics: findAndUpdate(formData.baseLogic.routingLogics),
+                          },
+                        });
+                      } else {
+                        updateRoutingLogic(routing.id, { fieldSchemas: fields });
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Recursive Nested Routing Logic */}
             <div className="pt-2 border-t space-y-2">
@@ -1322,23 +1143,6 @@ Call Summary:
     }
   };
 
-  const addLeadCaptureField = (routingId: string) => {
-    updateRoutingLogic(routingId, {
-      leadCaptureFields: [
-        ...formData.baseLogic.routingLogics.find((r) => r.id === routingId)?.leadCaptureFields || [],
-        { name: "", question: "", required: false, type: "text" as const },
-      ],
-    });
-  };
-
-  const removeLeadCaptureField = (routingId: string, index: number) => {
-    const routing = formData.baseLogic.routingLogics.find((r) => r.id === routingId);
-    if (routing) {
-      updateRoutingLogic(routingId, {
-        leadCaptureFields: routing.leadCaptureFields.filter((_, i) => i !== index),
-      });
-    }
-  };
 
   return (
     <>
@@ -1351,7 +1155,7 @@ Call Summary:
       onOpenChange(open);
     }}>
       <DialogContent 
-        className="w-[calc(100vw-2rem)] sm:w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+        className="w-[calc(100vw-2rem)] sm:w-full max-w-7xl max-h-[95vh] overflow-y-auto"
         hideCloseButton={true}
         onEscapeKeyDown={(e) => {
           // Prevent closing on ESC key

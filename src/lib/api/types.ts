@@ -194,12 +194,6 @@ export interface VoiceAgent {
       informationGathering: Array<{
         question: string;
       }>;
-      leadCaptureFields: Array<{
-        name: string;
-        question: string;
-        required: boolean;
-        type: "text" | "email" | "phone" | "number";
-      }>;
       completionResponse?: string; // Response after collecting information/lead data
       // Inline fallback/escalation logic per route
       fallback?: {
@@ -219,6 +213,29 @@ export interface VoiceAgent {
       associatedIntents?: string[]; // Array of intent IDs that trigger this route
       // Display order for sequential steps
       displayOrder?: number;
+      // Field schemas specific to this routing logic block
+      fieldSchemas?: Array<{
+        id: string;
+        label: string;
+        fieldName: string;
+        dataType: "text" | "phone" | "email" | "number" | "choice" | "date" | "boolean";
+        required: boolean;
+        displayOrder: number;
+        promptText?: string;
+        nlpExtractionHints?: string[];
+        validationRules?: {
+          regex?: string;
+          minLength?: number;
+          maxLength?: number;
+          min?: number;
+          max?: number;
+          pattern?: string;
+          errorMessage?: string;
+        };
+        choiceOptions?: string[];
+        defaultValue?: string;
+        description?: string;
+      }>;
       routingLogics?: Array<any>; // Recursive type for nested routing
     }>;
     // Legacy fields for backward compatibility
