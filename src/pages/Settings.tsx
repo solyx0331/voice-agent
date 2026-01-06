@@ -827,7 +827,7 @@ const Settings = () => {
                                 </div>
                                 {voice.url && (() => {
                                   // Construct full URL for audio playback
-                                  const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:8000';
+                                  const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
                                   const audioUrl = voice.url.startsWith('http') ? voice.url : `${baseUrl}${voice.url}`;
                                   return (
                                     <audio 

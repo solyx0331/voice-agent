@@ -1340,7 +1340,7 @@ Call Summary:
                     )}
                     {formData.voice.customVoiceUrl && (() => {
                       // Construct full URL for audio playback
-                      const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:8000';
+                      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
                       const audioUrl = formData.voice.customVoiceUrl.startsWith('http') 
                         ? formData.voice.customVoiceUrl 
                         : `${baseUrl}${formData.voice.customVoiceUrl}`;

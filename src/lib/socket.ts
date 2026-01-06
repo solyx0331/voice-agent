@@ -1,9 +1,8 @@
 import { io, Socket } from "socket.io-client";
 
 const getSocketUrl = () => {
-  const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
-  // Remove /api suffix if present, Socket.io uses root path
-  return apiUrl.replace(/\/api$/, "");
+  // Base URL should be origin only (no /api) - Socket.io uses root path
+  return import.meta.env.VITE_API_URL || "http://localhost:8000";
 };
 
 let socket: Socket | null = null;

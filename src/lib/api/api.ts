@@ -2,15 +2,17 @@ import { Call, VoiceAgent, Contact, DashboardStats, LiveCall, AnalyticsData } fr
 
 // API Service
 class ApiService {
-  private baseUrl = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
+  // Base URL should be origin only (no /api) - append /api in requests
+  private baseUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
-    const url = `${this.baseUrl}${endpoint}`;
+    const url = `${this.baseUrl}/api${endpoint}`;
     const response = await fetch(url, {
       ...options,
+      credentials: "include",
       headers: {
         "Content-Type": "application/json",
         "ngrok-skip-browser-warning": "true",
@@ -33,9 +35,10 @@ class ApiService {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<Blob> {
-    const url = `${this.baseUrl}${endpoint}`;
+    const url = `${this.baseUrl}/api${endpoint}`;
     const response = await fetch(url, {
       ...options,
+      credentials: "include",
       headers: {
         "ngrok-skip-browser-warning": "true",
         ...options.headers,
@@ -312,8 +315,9 @@ class ApiService {
     const formData = new FormData();
     formData.append("file", file);
 
-    const response = await fetch(`${this.baseUrl}/upload/voice`, {
+    const response = await fetch(`${this.baseUrl}/api/upload/voice`, {
       method: "POST",
+      credentials: "include",
       body: formData,
       headers: {
         "ngrok-skip-browser-warning": "true",
@@ -589,8 +593,9 @@ class ApiService {
       formData.append("name", name);
     }
 
-    const response = await fetch(`${this.baseUrl}/voices/custom`, {
+    const response = await fetch(`${this.baseUrl}/api/voices/custom`, {
       method: "POST",
+      credentials: "include",
       body: formData,
       headers: {
         "ngrok-skip-browser-warning": "true",
